@@ -34,7 +34,6 @@ separate test target -> independent oracle (never linked or selectable by the ga
 |---|---|---|
 | `game/entry/main.cpp` | `main()` | Parse `--help`, construct the title runtime on the stack, hand it to the launcher. Prints usage on stdout before any runtime or disc discovery. |
 | `tekken3::launchProduct` | free function (`game/entry/product_launch.h`) | Install the runtime, build `Game`, `watchdog_init` + `load_exe`, compose `psx::Machine` (bind devices, render path, `prepare`), run the finite boot prefix, attach the control channel, run the field loop. |
-| `tekken3::kUnattendedFieldCap` | `constexpr` | The field cap an unattended headless run gets when no bound was requested and no window exists. |
 
 ## game/program — executable facts and framework-facing title policy
 
@@ -117,7 +116,8 @@ is facts about the chain.
 
 ### The frame turn
 
-1. `tekken3::launchProduct` (`game/entry/product_launch.cpp`) calls `psx::Machine::run`.
+1. `tekken3::launchProduct` (`game/entry/product_launch.cpp`) calls `psx::Machine::run` with
+   `psx::host::RunBudget::fromConfig()`'s cap.
 2. `psx::Machine::run` loops `psx::Machine::stepFrame` — the **framework** owns the loop and its cap.
 3. `psx::Machine::stepFrame` runs `psx::FieldTurn::beginField` (pause/step, watchdog re-arm) — the
    framework's services around the field.
@@ -213,8 +213,8 @@ over and asks for a host transfer. There is no second boot path.
 
 ### The debug/control channel
 
-1. `tekken3::launchProduct` calls `psx::Machine::attachControlChannel` before the field loop starts,
-   so a driven run and an unattended cap can never race.
+1. `tekken3::launchProduct` calls `psx::Machine::attachControlChannel` before the field loop starts;
+   a live client lifts the unattended cap through `psx::host::RunBudget`.
 2. `psx::DbgServer` owns the loopback endpoint; queued commands are serviced once per field by
    `psx::FieldTurn::endField`, never inside a guest call.
 3. Nothing in this title reads the channel directly: `tools/probe_loader_state.py`,
