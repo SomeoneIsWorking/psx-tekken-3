@@ -1,13 +1,12 @@
 #include "entry/product_launch.h"
 
 #include "c_subsys.h"
-#include "cfg.h"
 #include "core.h"
 #include "game.h"
-#include "gpu_vk.h"
 #include "machine.h"
 #include "program/title_runtime.h"
 #include "psx_exe_image.h"
+#include "run_budget.h"
 
 #include <cstdint>
 #include <memory>
@@ -15,9 +14,6 @@
 namespace {
 
 constexpr const char *kDefaultExecutable = "scratch/bin/tekken3/SLUS_004.02";
-
-// A run with no explicit bound and no window is unattended: bound it, or it never ends.
-constexpr std::uint32_t kUnattendedFieldCap = 120;
 
 } // namespace
 
@@ -40,14 +36,8 @@ int launchProduct(TitleRuntime &runtime, int argc, char **argv) {
   machine.prepare();
   runtime.bootInit(*core);
 
-  // The control channel attaches before the cap is settled: an attached client means a driven run.
-  const int requestedFrames = cfg_int("PSXPORT_NATIVE_FRAMES", 0);
-  std::uint32_t frameLimit = requestedFrames > 0 ? static_cast<std::uint32_t>(requestedFrames) : 0u;
-  if (frameLimit == 0 && !gpu_vk_windowed()) {
-    frameLimit = kUnattendedFieldCap;
-  }
-  machine.attachControlChannel(frameLimit);
-  machine.run(frameLimit);
+  machine.attachControlChannel();
+  machine.run(static_cast<std::uint32_t>(psx::host::RunBudget::fromConfig().cap()));
   return 0;
 }
 
