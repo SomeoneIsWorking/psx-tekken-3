@@ -33,7 +33,7 @@ separate test target -> independent oracle (never linked or selectable by the ga
 | Symbol | Kind | Responsibility |
 |---|---|---|
 | `game/entry/main.cpp` | `main()` | Parse `--help`, construct the title runtime on the stack, hand it to the launcher. Prints usage on stdout before any runtime or disc discovery. |
-| `tekken3::launchProduct` | free function (`game/entry/product_launch.h`) | Install the runtime, build `Game`, `watchdog_init` + `load_exe`, compose `psx::Machine` (bind devices, render path, `prepare`), run the finite boot prefix, attach the control channel, run the field loop. |
+| `tekken3::launchProduct` | free function (`game/entry/product_launch.h`) | Install the runtime, build `Game`, insert the title's disc (`kTitleIdentity`: disc key, `TEKKEN3/SLUS_004.02`, default executable), `watchdog_init` + `load_exe`, compose `psx::Machine` (bind devices, render path, `prepare`), run the finite boot prefix, attach the control channel, run the field loop. |
 
 ## game/program — executable facts and framework-facing title policy
 
