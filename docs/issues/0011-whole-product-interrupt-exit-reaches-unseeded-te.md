@@ -6,7 +6,7 @@ symptom: the first-frame mode call spans bounded guest turns; later loader and g
 state_items: S003,S004,S008
 tags: runtime,cd,title-loader,t3-04,sio
 created: 2026-08-25
-updated: 2026-09-27
+updated: 2026-10-14
 ---
 
 ## Measured correction: the CD command path is not the missing owner
@@ -130,10 +130,9 @@ known instructions before it reports anything.
 
 `PSXPORT_DEBUG_SERVER` was inert: `runPort` composes its own finite loop and never entered
 `psxport_boot()`, which is the only caller of `dbg_server.start()` and `service()`. No listener, no
-`guest` denominator, no way to read a guest word from a running product. `DbgServer::attach` is
-documented as "the one call a title-owned spine needs before its loop" and is now called from
-`game/entry/product_launch.cpp`, with the per-frame `honourPause`/`service` pair in the same order the
-framework's own spine uses. This is a title composition defect, not a framework one; it is also what
+`guest` denominator, no way to read a guest word from a running product. The framework's
+`TitleSession::boot` now starts the channel and `psx::FieldTurn` answers the pause and services one
+command per field. This is a title composition defect, not a framework one; it is also what
 made every measurement in this section possible.
 
 ## Current boundary

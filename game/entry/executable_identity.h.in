@@ -1,0 +1,20 @@
+#pragma once
+
+#include <cstddef>
+#include <cstdint>
+#include <string_view>
+
+// Generated from titles/tekken3/executable.json.
+namespace tekken3::identity {
+
+inline constexpr std::string_view kExecutableSha256 = "@TEKKEN3_EXECUTABLE_SHA256@";
+inline constexpr std::size_t kExecutableBytes = @TEKKEN3_EXECUTABLE_SIZE@u;
+inline constexpr std::string_view kDiscExecutablePath = "@TEKKEN3_DISC_EXECUTABLE@";
+inline constexpr std::uint32_t kEntry = @TEKKEN3_EXECUTABLE_ENTRY@u;
+inline constexpr std::uint32_t kGlobalPointer = @TEKKEN3_EXECUTABLE_GP@u;
+inline constexpr std::uint32_t kTextAddress = @TEKKEN3_EXECUTABLE_TEXT@u;
+inline constexpr std::uint32_t kTextBytes = @TEKKEN3_EXECUTABLE_TEXT_SIZE@u;
+inline constexpr std::uint32_t kStackAddress = @TEKKEN3_EXECUTABLE_STACK@u;
+inline constexpr std::uint32_t kStackOffset = @TEKKEN3_EXECUTABLE_STACK_OFFSET@u;
+
+} // namespace tekken3::identity

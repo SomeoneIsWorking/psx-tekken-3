@@ -12,12 +12,11 @@ symlink to the live workspace framework, or a clone of its `main`); its own map 
 ## Shape
 
 ```text
-run.sh -> bootstrap.py -> tools/run.py -> game/entry/main.cpp
+run.sh -> bootstrap.py -> tools/run.py -> tekken3_port (framework main, product_main.cpp)
                                           |
-                                          v
-                              game/entry/product_launch.cpp   tekken3::launchProduct
+                     psx::host::ProductHost / TitleSession (framework)
                                           |
-            psx::Machine (framework)      |      tekken3::TitleRuntime (game/program)
+            game/entry/tekken3_catalog.cpp|      tekken3::TitleRuntime (game/program)
                                           v
                         game/frame/finite_frame.cpp  tekken3::frame::FrameDriver
                           one field turn, one guest frame, per field
@@ -28,20 +27,18 @@ separate test target -> independent oracle (never linked or selectable by the ga
 `game/` is the only first-party include root, so a header is reached by its subsystem path
 (`#include "frame/finite_frame.h"`, `#include "cd/loader_lifecycle.h"`).
 
-## game/entry — process entry and product composition
+## game/entry — the product's catalog
 
 | Symbol | Kind | Responsibility |
 |---|---|---|
-| `game/entry/main.cpp` | `main()` | Parse `--help`, construct the title runtime on the stack, hand it to the launcher. Prints usage on stdout before any runtime or disc discovery. |
-| `tekken3::launchProduct` | free function (`game/entry/product_launch.h`) | Install the runtime, build `Game`, insert the title's disc (`kTitleIdentity`: disc key, `TEKKEN3/SLUS_004.02`, default executable), `watchdog_init` + `load_exe`, compose `psx::Machine` (bind devices, render path, `prepare`), run the finite boot prefix, attach the control channel, run the field loop. |
+| `tekken3::createCatalog` | free function (`game/entry/tekken3_catalog.h`) | The product's `SingleTitleCatalog`: the `SLUS_004.02` identity (size, SHA-256, header, disc key, `TEKKEN3/SLUS_004.02`) generated from `titles/tekken3/executable.json` into `executable_identity.h`, the `scratch/bin` provisioning root, and the `TitleRuntime` with the entry and resident text extent from the same header. Entry is the framework main: `ProductHost` owns the command line (`tekken3_port [executable]`), provisioning and authentication; `TitleSession` boots and runs the fields. |
 
 ## game/program — executable facts and framework-facing title policy
 
 | Symbol | Kind | Responsibility |
 |---|---|---|
-| `tekken3::program::kEntry`, `kResidentPhysicalLo`, `kResidentPhysicalHi` | `inline constexpr` | Authenticated `SLUS_004.02` mapping facts: retail entry and resident physical text extent. Data, never generated guest code. |
 | `tekken3::ResidentProgramRange` | struct | The measured resident text extent handed to the runtime by the boundary harness. |
-| `tekken3::TitleRuntime` | class (`GameRuntime`) | Process-lifetime title policy: render capabilities (`RenderPath::Record` by default, no native path, no interpolation), the pad-buffer layout, the widescreen projection, the immutable `GuestProgramImage`, override registration, boot dispatch, and creation of the title frame driver. Owns the `widescreen::WidescreenProjection`. |
+| `tekken3::TitleRuntime` | class (`GameRuntime`) | Title policy, owned by the catalog: `bootEntry=DriverOwned`, render capabilities (`RenderPath::Record` by default, no native path, no interpolation), the pad-buffer layout, the widescreen projection, the immutable `GuestProgramImage`, override registration, boot dispatch, and creation of the title frame driver. Owns the `widescreen::WidescreenProjection`. |
 | `tekken3::hle::plan()` | free function (`game/program/platform_hle_plan.h`) | The one immutable `PlatformHlePlan` this title declares: the measured linked-libetc VSync entry, the guest field word a negative query answers from, and the single admitted body window. Data only — never a handler. |
 
 ## game/frame — the finite boot prefix and the one title frame
@@ -108,7 +105,7 @@ is facts about the chain.
 | `external/psxport/tools/port/launch_environment.py`, `external/psxport/tools/dbgclient.py`, `external/psxport/tools/formats/psx_exe.py` | The shared launch policy, live-endpoint client and PS-X EXE reader every title tool imports. A tool that re-implements one of these owns a copy that can disagree with the product it measures. |
 | `tools/verify.py` | The asset-free product gate: configure, build, run every title contract, check the linked execution boundary. |
 | `tools/ghidra_query.py`, `tools/probe_loader_state.py`, `tools/probe_cd_completion.py`, `tools/probe_tekken3_widescreen_pair.py` | Maintainer RE tools used by the open issues; none is a gate. |
-| `tools/verify_vsync_field_clock.py`, `tools/test_*.py` | Gates: the field word the product ships vs. what the executable measures, and the launcher/product help contracts. |
+| `tools/verify_vsync_field_clock.py`, `tools/test_*.py` | Gates: the field word the product ships vs. what the executable measures, and the launcher help contract. The product help is the CTest `tekken3_product_help_contract`. |
 | `titles/tekken3/executable.json`, `titles/tekken3/README.md` | Identity, load map, startup facts, projection facts. |
 | `tests/` | One contract per owner, built as separate targets and never linked into the product. |
 
@@ -116,11 +113,12 @@ is facts about the chain.
 
 ### The frame turn
 
-1. `tekken3::launchProduct` (`game/entry/product_launch.cpp`) calls `psx::Machine::run` with
-   `psx::host::RunBudget::fromConfig()`'s cap.
-2. `psx::Machine::run` loops `psx::Machine::stepFrame` — the **framework** owns the loop and its cap.
-3. `psx::Machine::stepFrame` runs `psx::FieldTurn::beginField` (pause/step, watchdog re-arm) — the
-   framework's services around the field.
+1. `psx::host::TitleSession::step` runs one field per step until `psx::host::RunBudget`'s cap, a
+   window close or a client `quit` — the **framework** owns the loop and its cap.
+2. `TitleSession::boot` ran the binds, `TitleRuntime::registerOverrides`, the control channel, the
+   display clear and `TitleRuntime::bootInit` (the finite boot prefix) before the first field.
+3. Each step runs `psx::FieldTurn::beginField` (pause/step, watchdog re-arm) — the framework's
+   services around the field.
 4. `psx::FrameLoopShell::step` calls the title's `tekken3::frame::FrameDriver::stepFrame` and takes
    the frame capture that enforces one presentation per field.
 5. `tekken3::frame::FrameDriver::stepFrame` calls `tekken3::frame::FiniteFrame::step` through a
@@ -134,7 +132,7 @@ is facts about the chain.
 **While a mode call is suspended** (a mode body outlived the field that started it), `FrameDriver`
 holds the pending `ResumableGuestCall`, and each further field calls
 `FiniteFrame::step`'s pending branch: pad service, presentation commit, audio service, resume. The
-field turn still belongs to `psx::Machine`; the title only supplies the body.
+field turn still belongs to `TitleSession::step`; the title only supplies the body.
 
 **Boot is the same turn once.** `TitleRuntime::bootInit` calls `FrameDriver::runBootPrefix`, which
 dispatches the retail entry and is released when the native override at `FiniteFrame::kMain` takes
@@ -154,8 +152,8 @@ over and asks for a host transfer. There is no second boot path.
 5. `FiniteFrame::runBarrier` calls `servicePad()` immediately before the RCntCNT2 event, so the guest
    parses this field's packet rather than a stale one. A held field (pending mode call) calls
    `servicePad()` too, which is why input stays live while a mode body spans fields.
-6. The debug/control channel is a separate path into the same state: `psx::DbgServer` is attached by
-   `psx::Machine::attachControlChannel`, and `psx::FieldTurn::endField` services exactly one queued
+6. The debug/control channel is a separate path into the same state: `psx::DbgServer` is started by
+   `TitleSession::boot`, and `psx::FieldTurn::endField` services exactly one queued
    command per field, so a `quit`, a `mem` read or a pad drive lands between fields and never
    inside a guest call.
 
@@ -213,7 +211,7 @@ over and asks for a host transfer. There is no second boot path.
 
 ### The debug/control channel
 
-1. `tekken3::launchProduct` calls `psx::Machine::attachControlChannel` before the field loop starts;
+1. `TitleSession::boot` starts `DbgServer` before the field loop starts;
    a live client lifts the unattended cap through `psx::host::RunBudget`.
 2. `psx::DbgServer` owns the loopback endpoint; queued commands are serviced once per field by
    `psx::FieldTurn::endField`, never inside a guest call.

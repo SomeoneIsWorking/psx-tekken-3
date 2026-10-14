@@ -23,7 +23,9 @@ GuestProgramImage makeProgramImage(tekken3::ResidentProgramRange range) {
   if (range.hi <= range.lo) {
     throw std::invalid_argument("Tekken 3 resident program range is empty or inverted");
   }
+  // The title's FrameDriver enters the executable at its entry, so the framework applies no crt0.
   return {
+      .bootEntry = BootEntry::DriverOwned,
       .residentText = {range.lo, range.hi},
   };
 }
