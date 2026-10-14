@@ -213,6 +213,4 @@ add_custom_target(
     tekken3_widescreen_stage_wedge_contract_check
   USES_TERMINAL
   VERBATIM)
-if(TARGET tekken3_product_help_contract_check)
-  add_dependencies(verify tekken3_product_help_contract_check)
-endif()
+add_dependencies(verify tekken3_port)
