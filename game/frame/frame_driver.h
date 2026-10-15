@@ -21,10 +21,10 @@ class CoreMachine final : public Machine {
 public:
   CoreMachine(Game &game, Core &core);
 
-  void call(CallSite site) override;
-  void call1(CallSite site, std::uint32_t a0) override;
-  void call3(CallSite site, const std::array<std::uint32_t, 3> &arguments) override;
-  bool beginSpanningCall(CallSite site) override;
+  void call(psx::cpu::GuestCallSite site) override;
+  void call1(psx::cpu::GuestCallSite site, std::uint32_t a0) override;
+  void call3(psx::cpu::GuestCallSite site, const std::array<std::uint32_t, 3> &arguments) override;
+  bool beginSpanningCall(psx::cpu::GuestCallSite site) override;
   bool resumeSpanningCall() override;
   bool spanningCallPending() const override;
   void deliverEvent(std::uint32_t eventClass, std::uint32_t spec) override;

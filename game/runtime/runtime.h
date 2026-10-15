@@ -27,8 +27,6 @@ public:
   void deliverPad(Core &core, const psx::input::PadDelivery &delivery) override;
 
   const GuestWidescreenProjection *guestWidescreenProjection() const override;
-  RenderCapabilities renderCapabilities() const override;
-  bool guestVramIsPicture(const Game &game) const override;
 
   // `warp <p1> <p2>`.
   bool titleCommand(Core &core, const psx::game::TitleCommandLine &input, std::FILE *reply) override;

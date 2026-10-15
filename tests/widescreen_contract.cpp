@@ -12,10 +12,10 @@ GuestProjectionGeometry observedGeometry;
 std::uint32_t retailWidth = 0;
 std::uint32_t retailHeight = 0;
 
-GuestProjectionPlan wideLatch(Core *, GuestProjectionGeometry geometry) {
+GuestProjectionPlan wideLatch(Core &, GuestProjectionGeometry geometry) {
   observedGeometry = geometry;
-  return guest_projection_plan({
-      .path = RenderPath::Gte,
+  return psx::present::guestProjectionPlan({
+      .path = RenderPath::Record,
       .requested = PresentationAspect::Wide16x9,
       .nativePresentation = {368, 448},
       .nativeProjection = geometry,
@@ -24,8 +24,8 @@ GuestProjectionPlan wideLatch(Core *, GuestProjectionGeometry geometry) {
   });
 }
 
-GuestProjectionPlan recordLatch(Core *, GuestProjectionGeometry geometry) {
-  return guest_projection_plan({
+GuestProjectionPlan recordLatch(Core &, GuestProjectionGeometry geometry) {
+  return psx::present::guestProjectionPlan({
       .path = RenderPath::Record,
       .requested = PresentationAspect::Wide16x9,
       .nativePresentation = {368, 480},
@@ -102,10 +102,10 @@ bool wideStageAndEffectMarginsSurviveRetailClip() {
   constexpr std::uint32_t effectOt = 0x80016000u;
   constexpr std::uint32_t effectContext = 0x80017000u;
   core->mem_w32(effectCommand, 6u << 21u);
-  core->mem_w32(0x1F800000u, packedVertex(450, 100));
-  core->mem_w32(0x1F800004u, packedVertex(450, 100));
-  core->mem_w32(0x1F800008u, packedVertex(450, 20));
-  core->mem_w32(0x1F80000Cu, packedVertex(450, 100));
+  core->mem_w32(0x1F800000u, packedVertex(420, 100));
+  core->mem_w32(0x1F800004u, packedVertex(420, 100));
+  core->mem_w32(0x1F800008u, packedVertex(420, 20));
+  core->mem_w32(0x1F80000Cu, packedVertex(420, 100));
   core->mem_w32(effectOt + 24u, 0x000ABCDEu);
   core->mem_w32(effectContext + 12u, 0);
   core->r[4] = effectCommand;

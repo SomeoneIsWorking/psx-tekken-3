@@ -278,16 +278,16 @@ class BudgetMachine final : public tekken3::frame::Machine {
 public:
   BudgetMachine(Core &core, psx::cpu::ResumableGuestCall &modeCall) : core_(core), modeCall_(modeCall) {}
 
-  void call(tekken3::frame::CallSite site) override {
+  void call(psx::cpu::GuestCallSite site) override {
     ++suspendingEntryAbuses;
     tekken3::execution::FiniteGuestCall::callToReturn(core_, site.entry, "mode_call_budget_resume control");
   }
 
-  void call1(tekken3::frame::CallSite site, std::uint32_t) override {
+  void call1(psx::cpu::GuestCallSite site, std::uint32_t) override {
     call(site);
   }
 
-  void call3(tekken3::frame::CallSite site, const std::array<std::uint32_t, 3> &) override {
+  void call3(psx::cpu::GuestCallSite site, const std::array<std::uint32_t, 3> &) override {
     call(site);
   }
 
@@ -299,11 +299,12 @@ public:
     return step.outcome == psx::cpu::CallOutcome::Returned;
   }
 
-  bool beginSpanningCall(tekken3::frame::CallSite site) override {
+  bool beginSpanningCall(psx::cpu::GuestCallSite site) override {
     ++boundedStarts;
     lastEntry = site.entry;
     lastReturnPc = site.returnPc;
-    modeCall_.begin(core_, "mode call", site.entry, site.returnPc, psx::cpu::kUnboundedCallTurns);
+    modeCall_.begin(
+        core_, "mode call", psx::cpu::GuestCallSite{site.entry, site.returnPc}, psx::cpu::kUnboundedCallTurns);
     return settled(modeCall_.advance(std::nullopt, psx::cpu::ExecutionBudget::fromCycles(kFieldCycles)));
   }
 
@@ -444,7 +445,8 @@ bool misScheduledBodyStoresNothing() {
     psx::cpu::ResumableGuestCall probe;
     for (int field = 0; field < 7; ++field) {
       if (field == 0) {
-        probe.begin(core, "negative", kModeFunction2, kModeReturnPc2, psx::cpu::kUnboundedCallTurns);
+        probe.begin(
+            core, "negative", psx::cpu::GuestCallSite{kModeFunction2, kModeReturnPc2}, psx::cpu::kUnboundedCallTurns);
       }
       const psx::cpu::CallStep probeStep =
           probe.advance(std::nullopt, psx::cpu::ExecutionBudget::fromCycles(kFieldCycles));

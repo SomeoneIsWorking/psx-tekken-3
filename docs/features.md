@@ -35,8 +35,7 @@ Title hops only. Each row is where Tekken 3 joins a psxport feature hop (`psxpor
 
 | hop | joins | owner |
 |---|---|---|
-| 1 | psxport F-RENDER.1 | `game/runtime/runtime.cpp:Runtime::renderCapabilities` — Record, no native path, no interpolation (native 60 fps) |
-| 2 | psxport F-RENDER.1 | `game/render/gpu_queue_timeout.cpp:installOverrides` — the libgpu queue timeout on the guest field word |
+| 1 | psxport F-BOOT.6 | `game/render/gpu_queue_timeout.cpp:installOverrides` — the libgpu queue timeout on the guest field word |
 
 ## F-WIDE
 
