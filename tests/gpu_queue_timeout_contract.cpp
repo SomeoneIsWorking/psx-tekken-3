@@ -54,27 +54,24 @@ public:
     }
   }
 
-  std::uint32_t setCriticalSection(std::uint32_t enabled, std::uint32_t returnPc) override {
+  std::uint32_t setCriticalSection(tekken3::render::CriticalSectionCall call) override {
     ++criticalCalls;
     if (criticalCalls == 1) {
-      firstCriticalReturnPc = returnPc;
+      firstCriticalReturnPc = call.returnPc;
     } else {
-      secondCriticalReturnPc = returnPc;
+      secondCriticalReturnPc = call.returnPc;
     }
     const std::uint32_t prior = critical;
-    critical = enabled;
+    critical = call.enabled;
     return prior;
   }
 
-  void reportTimeout(std::uint32_t queueDepth,
-                     std::uint32_t gpuData,
-                     std::uint32_t gpuControl,
-                     std::uint32_t dmaControl) override {
+  void reportTimeout(const tekken3::render::TimeoutReport &report) override {
     ++timeoutReports;
-    reportedQueueDepth = queueDepth;
-    reportedGpuData = gpuData;
-    reportedGpuControl = gpuControl;
-    reportedDmaControl = dmaControl;
+    reportedQueueDepth = report.queueDepth;
+    reportedGpuData = report.gpuData;
+    reportedGpuControl = report.gpuControl;
+    reportedDmaControl = report.dmaControl;
   }
 
   std::unordered_map<std::uint32_t, std::uint32_t> words;

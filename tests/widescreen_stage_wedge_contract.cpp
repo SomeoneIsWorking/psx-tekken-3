@@ -1,4 +1,5 @@
 #include "core.h"
+#include "stub_game_runtime.h"
 #include "widescreen/widescreen.h"
 
 #include <array>
@@ -581,21 +582,22 @@ bool cameraCoordinatesAreClampedAndTheCellMarked() {
 }
 
 bool productionPathPublishesThePlanAndWritesTheGrid() {
-  auto core = std::make_unique<Core>();
+  psx::test::StubGameRuntime runtime;
+  auto core = std::make_unique<Core>(runtime);
   tekken3::widescreen::WidescreenProjection widescreen(wideLatch, retailDimensions);
+  GuestProjectionPlan plan;
   core->r[4] = kBootProjectionWidth;
   core->r[5] = 480;
-  widescreen.publishDimensions(*core);
+  widescreen.publishDimensions(*core, plan);
   if (observedGeometry.extent.width != kBootProjectionWidth || observedGeometry.drawWidth != kBootDrawWidth ||
       retailWidth != kWideProjectionWidth || retailHeight != 480) {
     return ok("the plan must widen the view 384->512 and keep the 368 draw measurement");
   }
-  if (widescreen.stageWedge().plan().projectionExtent.width != kWideProjectionWidth ||
-      widescreen.stageWedge().plan().guestDrawWidth != kWideDrawWidth) {
-    return ok("the stage wedge must see the latched plan");
+  if (plan.projectionExtent.width != kWideProjectionWidth || plan.guestDrawWidth != kWideDrawWidth) {
+    return ok("publication must latch the widened plan");
   }
-  if (widescreen.stageWedge().derivedWedge(kRetailWedge) != 762 ||
-      widescreen.stageWedge().derivedWedge(kAlternateWedge) != 962) {
+  if (tekken3::widescreen::StageTileWedge::derivedWedge(kRetailWedge, plan) != 762 ||
+      tekken3::widescreen::StageTileWedge::derivedWedge(kAlternateWedge, plan) != 962) {
     return ok("the stage wedge must derive its angles from the latched plan");
   }
 
@@ -608,7 +610,7 @@ bool productionPathPublishesThePlanAndWritesTheGrid() {
   const std::int32_t half =
       tekken3::widescreen::StageTileWedge::widenWedge(kRetailWedge, kBootProjectionWidth, kWideProjectionWidth) >> 1;
   for (const bool positive : {false, true}) {
-    const std::int32_t index = tekken3::widescreen::StageTileWedge::directionIndex(query.heading, half, positive);
+    const std::int32_t index = tekken3::widescreen::StageTileWedge::directionIndex(query, half, positive);
     core->mem_w16(kSineTable + static_cast<std::uint32_t>(index) * 2u,
                   static_cast<std::uint16_t>(static_cast<std::int16_t>(wordAt(index, true))));
     core->mem_w16(kCosineTable + static_cast<std::uint32_t>(index) * 2u,
@@ -628,7 +630,7 @@ bool productionPathPublishesThePlanAndWritesTheGrid() {
   core->r[5] = static_cast<std::uint32_t>(query.heading);
   core->r[6] = static_cast<std::uint32_t>(query.first);
   core->r[7] = static_cast<std::uint32_t>(query.second);
-  widescreen.stageWedge().selectTiles(*core);
+  widescreen.stageWedge().selectTiles(*core, plan);
   std::string grid;
   for (std::uint32_t index = 0; index < 36u; ++index) {
     const std::uint32_t value = core->mem_r32(kGrid + index * 4u);

@@ -280,7 +280,7 @@ It would **not** settle the menu, its accepted inputs, or the branch toward a fi
 ## Next
 
 Implement the `FUN_80093478` override issue 0011 already names, reproducing the whole function
-rather than only the first loop, and install it through the same `tekken3::guest::install` path as
-the six CD overrides. Then re-run `tools/probe_loader_state.py` and take the answer to (1) and (2)
+rather than only the first loop, and install it from `Runtime::registerOverrides` beside
+the CD overrides (`cd::installOverrides`). Then re-run `tools/probe_loader_state.py` and take the answer to (1) and (2)
 from the live words. Only after mode 2 exits does the fight scene exist to widen, and
-`tools/probe_tekken3_widescreen_pair.py` has a frame worth shooting at.
+`tools/probe_widescreen_pair.py` has a frame worth shooting at.

@@ -1,5 +1,6 @@
 #include "core.h"
 #include "execution/finite_guest_call.h"
+#include "stub_game_runtime.h"
 
 #include <cstdio>
 #include <memory>
@@ -14,7 +15,8 @@ bool contains(const std::string &text, const char *needle) {
 } // namespace
 
 int main() {
-  auto core = std::make_unique<Core>();
+  psx::test::StubGameRuntime runtime;
+  auto core = std::make_unique<Core>(runtime);
   core->r[31] = 0x80028C9Cu;
   core->r[4] = 0x80011000u;
   core->r[5] = 0x80100000u;

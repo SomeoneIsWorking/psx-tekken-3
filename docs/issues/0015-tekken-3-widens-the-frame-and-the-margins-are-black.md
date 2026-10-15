@@ -22,7 +22,7 @@ frames until it passes would be manufacturing evidence, exactly as S007 already 
 
 ## Both legs, from the product
 
-Method: `tools/probe_tekken3_widescreen_pair.py`, two processes, one tracked settings file per leg
+Method: `tools/probe_widescreen_pair.py`, two processes, one tracked settings file per leg
 (`config/aspect_4x3.ini` / `config/aspect_16x9.ini`, both `fps60=0`), the real
 `Tekken 3 (USA).chd`, guest-resolution `shot` readback. Tool selftest 18/18.
 

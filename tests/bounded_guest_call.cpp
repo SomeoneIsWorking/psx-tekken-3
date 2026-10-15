@@ -4,6 +4,7 @@
 #include "game.h"
 #include "lightrec_executor.h"
 #include "psx_exe_image.h"
+#include "stub_game_runtime.h"
 
 #include <array>
 #include <cstdint>
@@ -55,7 +56,8 @@ std::vector<std::uint8_t> executable() {
 }
 
 bool run(std::uint32_t returnPc, psx::cpu::ExecutionBudget firstBudget, bool expectSuspend, std::uint32_t expectedV0) {
-  auto game = std::make_unique<Game>();
+  psx::test::StubGameRuntime runtime;
+  auto game = std::make_unique<Game>(runtime, psx::config::Config{});
   Core &core = game->core;
   const auto loaded = psx::cpu::loadPsxExeImage(core, executable(), "synthetic nested guest call");
   if (!loaded) {

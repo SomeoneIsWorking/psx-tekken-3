@@ -1,127 +1,16 @@
 #include "frame/finite_frame.h"
 
 #include "emulated_time.h"
+#include "recording_machine.h"
 #include "segment_clock.h"
 
-#include <array>
 #include <cstdint>
 #include <cstdio>
-#include <string>
-#include <unordered_map>
-#include <utility>
-#include <vector>
 
 namespace {
 
-struct Operation {
-  std::string kind;
-  std::uint32_t address = 0;
-  std::uint32_t returnPc = 0;
-  std::uint32_t a0 = 0;
-  std::uint32_t a1 = 0;
-  std::uint32_t a2 = 0;
-};
-
-class RecordingMachine final : public tekken3::frame::Machine {
-public:
-  void call(std::uint32_t address, std::uint32_t returnPc) override {
-    operations.push_back({"call", address, returnPc});
-    result = callResults[address];
-  }
-
-  void call1(std::uint32_t address, std::uint32_t returnPc, std::uint32_t a0) override {
-    operations.push_back({"call1", address, returnPc, a0});
-    result = callResults[address];
-  }
-
-  void
-  call3(std::uint32_t address, std::uint32_t returnPc, std::uint32_t a0, std::uint32_t a1, std::uint32_t a2) override {
-    operations.push_back({"call3", address, returnPc, a0, a1, a2});
-    result = callResults[address];
-  }
-
-  bool beginSpanningCall(std::uint32_t address, std::uint32_t returnPc) override {
-    ++boundedStarts;
-    call(address, returnPc);
-    return boundedStartReturns;
-  }
-
-  bool resumeSpanningCall() override {
-    ++boundedResumes;
-    operations.push_back({"resume"});
-    return boundedResumeReturns;
-  }
-
-  void deliverEvent(std::uint32_t eventClass, std::uint32_t spec) override {
-    operations.push_back({"event", eventClass, spec});
-    if (releaseFrameEvent) {
-      memory[0x8009BC5Cu] = 1;
-    }
-  }
-
-  std::uint32_t returnValue() const override {
-    return result;
-  }
-
-  std::uint32_t readRegister(std::uint32_t index) const override {
-    return registers[index];
-  }
-
-  void writeRegister(std::uint32_t index, std::uint32_t value) override {
-    registers[index] = value;
-  }
-
-  void tick(std::uint32_t guestInstructions) override {
-    guestTicks += guestInstructions;
-  }
-
-  std::uint8_t read8(std::uint32_t address) const override {
-    return static_cast<std::uint8_t>(read32(address));
-  }
-
-  std::uint16_t read16(std::uint32_t address) const override {
-    return static_cast<std::uint16_t>(read32(address));
-  }
-
-  std::uint32_t read32(std::uint32_t address) const override {
-    const auto found = memory.find(address);
-    return found == memory.end() ? 0 : found->second;
-  }
-
-  void write8(std::uint32_t address, std::uint8_t value) override {
-    memory[address] = value;
-    operations.push_back({"write8", address, 0, value});
-  }
-
-  void write32(std::uint32_t address, std::uint32_t value) override {
-    memory[address] = value;
-    operations.push_back({"write32", address, 0, value});
-  }
-
-  void commitPresentation() override {
-    operations.push_back({"present"});
-  }
-
-  void serviceAudioSink() override {
-    operations.push_back({"audio"});
-  }
-
-  void servicePad() override {
-    operations.push_back({"pad"});
-  }
-
-  std::vector<Operation> operations;
-  std::unordered_map<std::uint32_t, std::uint32_t> memory;
-  std::unordered_map<std::uint32_t, std::uint32_t> callResults;
-  std::array<std::uint32_t, 32> registers{};
-  std::uint32_t guestTicks = 0;
-  std::uint32_t result = 0;
-  bool releaseFrameEvent = true;
-  bool boundedStartReturns = true;
-  bool boundedResumeReturns = true;
-  unsigned boundedStarts = 0;
-  unsigned boundedResumes = 0;
-};
+using tekken3::test::Operation;
+using tekken3::test::RecordingMachine;
 
 bool operationIs(const Operation &operation, const char *kind, std::uint32_t address = 0, std::uint32_t returnPc = 0) {
   return operation.kind == kind && operation.address == address && operation.returnPc == returnPc;

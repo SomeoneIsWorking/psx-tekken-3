@@ -41,7 +41,7 @@ DEFAULT_BRANCH = "main"
 # psxport's own vendor submodules, init'd non-recursively (beetle has a URL-less nested gitlink that
 # makes `--recursive` fail outright), then that nested gitlink, as (parent, child) pairs.
 SUBMODULES = ((".", "vendor/beetle-psx"), (".", "vendor/lucent"), (".", "vendor/rmlui"),
-              (".", "vendor/bug-report"), ("vendor/beetle-psx", "deps/libchdr"))
+              (".", "vendor/bug-report"), (".", "vendor/setup-ui"), ("vendor/beetle-psx", "deps/libchdr"))
 LIGHTREC_REVISION = re.compile(r'set\s*\(\s*PSXPORT_LIGHTREC_REVISION\s+"([0-9a-f]{40})"')
 
 
@@ -183,6 +183,10 @@ def do_ensure(repo, link):
         # worktree, or a checkout the workspace moved. It is the only framework this port has, so it
         # is left alone rather than replaced by a clone.
         print(f"[psxport] external/psxport is a symlink to {os.path.realpath(link)}; left alone.")
+        return 0
+    if describe_link(link) == "clone" and is_framework(link):
+        # An earlier run's clone (CI resolves the framework, then the verifier asks again).
+        print("[psxport] external/psxport is a clone; left alone.")
         return 0
     return do_clone(link)
 

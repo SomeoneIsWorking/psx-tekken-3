@@ -33,11 +33,11 @@ def main() -> int:
             build=build,
             psxport=PSXPORT,
             product=build / "bin" / "tekken3_port",
-            cmake_module=ROOT / "cmake" / "tekken3_port.cmake",
+            cmake_module=ROOT / "CMakeLists.txt",
             test_regex=(
-                r"^tekken3_(product_help_contract|runtime_seam|runtime_contract|"
-                r"finite_frame_contract|bounded_guest_call|finite_guest_call_contract|"
-                r"sector_ready_order_contract|gpu_queue_timeout_contract|"
+                r"^tekken3_(product_help_contract|platform_bindings_contract|fight_warp_contract|frame_driver_contract|"
+                r"finite_frame_contract|bounded_guest_call|finite_guest_call_contract|mode_call_budget_resume|"
+                r"sector_ready_order_contract|gpu_queue_timeout_contract|vsync_field_clock_contract|"
                 r"widescreen_contract|widescreen_stage_wedge_contract|irq_oracle_selftest|"
                 r"launcher_selftest|launcher_help_contract)$"
             ),

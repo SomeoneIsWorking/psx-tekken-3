@@ -2,6 +2,7 @@
 
 #include "core.h"
 #include "native_dispatch.h"
+#include "runtime/session.h"
 #include "widescreen/widescreen.h"
 
 #include <algorithm>
@@ -28,27 +29,34 @@ constexpr std::int32_t kQuarterTurn = kTurnUnits / 4;
 constexpr std::int32_t kHalfTurn = kTurnUnits / 2;
 constexpr double kRadiansPerTurn = 2.0 * std::numbers::pi;
 
-void originalStageTileSelector(Core *core) {
-  psx::cpu::callOriginalToReturn(
-      *core, kStageTileSelector, psx::cpu::ExecutionBudget::currentTurn(*core), "Tekken3::stageTileSelector original");
-}
-
 void refuse(const char *detail) {
   lucent::error("wide", "Tekken 3 stage-tile wedge: {}", detail);
   std::abort();
 }
 
+// A cell of the 6x6 block.
+struct Cell {
+  std::int32_t row = 0;
+  std::int32_t column = 0;
+};
+
 // 0x8006D9AC: the selector clamps each camera coordinate into [-2*tile, 2*tile), then substitutes
 // -3*tile or 3*tile-1, so the cell is one of the 36 (block origin -3*tile).
-std::int32_t clampToBlock(std::int32_t coordinate, std::int32_t tile) {
-  const std::int64_t twoTile = static_cast<std::int64_t>(tile) * 2;
-  if (static_cast<std::int64_t>(coordinate) < -twoTile) {
-    return static_cast<std::int32_t>(-3 * static_cast<std::int64_t>(tile));
-  }
-  if (static_cast<std::int64_t>(coordinate) >= twoTile) {
-    return static_cast<std::int32_t>(3 * static_cast<std::int64_t>(tile) - 1);
-  }
-  return coordinate;
+StageTileWedge::Query clampedToBlock(const StageTileWedge::Query &query) {
+  const std::int64_t tile = query.tileSize;
+  const auto clamp = [tile](std::int32_t coordinate) {
+    if (static_cast<std::int64_t>(coordinate) < -2 * tile) {
+      return static_cast<std::int32_t>(-3 * tile);
+    }
+    if (static_cast<std::int64_t>(coordinate) >= 2 * tile) {
+      return static_cast<std::int32_t>(3 * tile - 1);
+    }
+    return coordinate;
+  };
+  StageTileWedge::Query clamped = query;
+  clamped.first = clamp(query.first);
+  clamped.second = clamp(query.second);
+  return clamped;
 }
 
 // 0x8006DA68: guest `div`, truncating like C++.
@@ -69,16 +77,14 @@ std::int32_t stepComponent(std::int32_t stepScale, std::int32_t direction) {
 // 0x8006DA68..0x8006DAC8: march one wedge edge from the camera cell, selecting each cell entered.
 // The guest loop is unbounded (a zero step would spin), so it is bounded by marchStepBound.
 bool marchRay(StageTileWedge::Selection &selection,
-              std::int32_t &lastRow,
-              std::int32_t &lastColumn,
-              std::int32_t first,
-              std::int32_t second,
+              Cell &reached,
+              const StageTileWedge::Query &camera,
               const StageTileWedge::StageBlock &block,
               const StageTileWedge::Ray &ray,
-              std::int32_t tile,
               std::int64_t maxSteps) {
-  std::int32_t along = first - block.firstOrigin;
-  std::int32_t across = second - block.secondOrigin;
+  const std::int32_t tile = camera.tileSize;
+  std::int32_t along = camera.first - block.firstOrigin;
+  std::int32_t across = camera.second - block.secondOrigin;
   bool entered = false;
   for (std::int64_t step = 0; step < maxSteps; ++step) {
     const std::int32_t column = blockCoordinate(along, tile);
@@ -87,8 +93,7 @@ bool marchRay(StageTileWedge::Selection &selection,
       return entered;
     }
     selection.select(static_cast<std::size_t>(row) * StageTileWedge::kSpan + static_cast<std::size_t>(column));
-    lastRow = row;
-    lastColumn = column;
+    reached = {row, column};
     entered = true;
     along += ray.firstStep;
     across += ray.secondStep;
@@ -115,17 +120,15 @@ std::int64_t marchStepBound(const StageTileWedge::Ray &ray, std::int32_t tile) {
 
 // 0x8006DBC4..0x8006DC7C: walk the block border between the two exit cells. The branch pair at
 // 0x8006DC54/0x8006DC5C is a back edge; the periodic border is bounded by two laps.
-bool walkBorder(StageTileWedge::Selection &selection,
-                std::int32_t fromRow,
-                std::int32_t fromColumn,
-                std::int32_t toRow,
-                std::int32_t toColumn) {
+bool walkBorder(StageTileWedge::Selection &selection, Cell from, Cell to) {
+  const std::int32_t toRow = to.row;
+  const std::int32_t toColumn = to.column;
   const std::int32_t last = static_cast<std::int32_t>(StageTileWedge::kSpan) - 1;
   // The border holds 4 * (kSpan - 1) cells.
   constexpr int kLaps = 2;
   const int maxSteps = kLaps * 4 * (static_cast<int>(StageTileWedge::kSpan) - 1);
-  std::int32_t row = fromRow;
-  std::int32_t column = fromColumn;
+  std::int32_t row = from.row;
+  std::int32_t column = from.column;
   for (int step = 0; step < maxSteps; ++step) {
     if (row == last && column < last) {
       ++column;
@@ -192,13 +195,13 @@ std::int32_t blockDistance(const StageTileWedge::Selection &selection,
 
 } // namespace
 
-void StageTileWedge::install(Core &core) {
-  retailSelector_ = originalStageTileSelector;
+void StageTileWedge::install(Core &core) const {
   psx::cpu::installNativeOverride(core, kStageTileSelector, "Tekken3::stageTileSelector", selectTilesOverride);
 }
 
-void StageTileWedge::publishPlan(const GuestProjectionPlan &plan) const {
-  plan_ = plan;
+void StageTileWedge::originalSelector(Core *core) {
+  psx::cpu::callOriginalToReturn(
+      *core, kStageTileSelector, psx::cpu::ExecutionBudget::currentTurn(*core), "Tekken3::stageTileSelector original");
 }
 
 std::int32_t StageTileWedge::widenWedge(std::int32_t retailWedge, int nativeProjectionWidth, int projectionWidth) {
@@ -219,10 +222,10 @@ std::int32_t StageTileWedge::widenWedge(std::int32_t retailWedge, int nativeProj
   return static_cast<std::int32_t>(bounded) << 1;
 }
 
-std::int32_t StageTileWedge::directionIndex(std::int32_t heading, std::int32_t halfWedge, bool positive) {
+std::int32_t StageTileWedge::directionIndex(const Query &query, std::int32_t halfWedge, bool positive) {
   // 0x8006D9F0/0x8006DAD0: negated heading plus or minus the half wedge, masked to one turn.
   const std::int32_t offset = positive ? halfWedge : -halfWedge;
-  return (-heading + offset) & (kTurnUnits - 1);
+  return (-query.heading + offset) & (kTurnUnits - 1);
 }
 
 StageTileWedge::Ray StageTileWedge::stepOf(DirectionWord direction, const StageBlock &block) {
@@ -247,33 +250,30 @@ StageTileWedge::Result StageTileWedge::select(const Query &query, const StageBlo
   }
 
   Selection &selection = result.selection;
-  const std::int32_t first = clampToBlock(query.first, tile);
-  const std::int32_t second = clampToBlock(query.second, tile);
+  const Query camera = clampedToBlock(query);
 
-  std::int32_t leftRow = 0;
-  std::int32_t leftColumn = 0;
+  Cell leftExit;
   const std::int64_t leftBound = marchStepBound(wedge.left, tile);
   const std::int64_t rightBound = marchStepBound(wedge.right, tile);
   if (leftBound == 0 || rightBound == 0) {
     result.status = SelectionStatus::marchUnbounded;
     return result;
   }
-  if (!marchRay(selection, leftRow, leftColumn, first, second, block, wedge.left, tile, leftBound)) {
+  if (!marchRay(selection, leftExit, camera, block, wedge.left, leftBound)) {
     // The -3*tile origin rules this out; the guest would walk from stale registers.
     result.status = SelectionStatus::cameraOutsideBlock;
     return result;
   }
-  std::int32_t rightRow = 0;
-  std::int32_t rightColumn = 0;
-  marchRay(selection, rightRow, rightColumn, first, second, block, wedge.right, tile, rightBound);
-  if (!walkBorder(selection, leftRow, leftColumn, rightRow, rightColumn)) {
+  Cell rightExit;
+  marchRay(selection, rightExit, camera, block, wedge.right, rightBound);
+  if (!walkBorder(selection, leftExit, rightExit)) {
     result.status = SelectionStatus::borderWalkUnbounded;
     return result;
   }
   fillRows(selection);
 
-  const std::int32_t cameraColumn = blockCoordinate(first - block.firstOrigin, tile);
-  const std::int32_t cameraRow = blockCoordinate(second - block.secondOrigin, tile);
+  const std::int32_t cameraColumn = blockCoordinate(camera.first - block.firstOrigin, tile);
+  const std::int32_t cameraRow = blockCoordinate(camera.second - block.secondOrigin, tile);
   selection.cell[static_cast<std::size_t>(cameraRow) * kSpan + static_cast<std::size_t>(cameraColumn)] = kCameraCell;
 
   // 0x8006DD78..0x8006DE18: near-ring threshold from cells (2..3, 2..3).
@@ -302,12 +302,8 @@ StageTileWedge::Result StageTileWedge::select(const Query &query, const StageBlo
   return result;
 }
 
-std::int32_t StageTileWedge::derivedWedge(std::int32_t retailWedge) const {
-  return widenWedge(retailWedge, plan_.nativeProjectionExtent.width, plan_.projectionExtent.width);
-}
-
-const GuestProjectionPlan &StageTileWedge::plan() const {
-  return plan_;
+std::int32_t StageTileWedge::derivedWedge(std::int32_t retailWedge, const GuestProjectionPlan &plan) {
+  return widenWedge(retailWedge, plan.nativeProjectionExtent.width, plan.projectionExtent.width);
 }
 
 StageTileWedge::DirectionWord StageTileWedge::guestDirection(Core &core, std::int32_t index) {
@@ -317,13 +313,9 @@ StageTileWedge::DirectionWord StageTileWedge::guestDirection(Core &core, std::in
           static_cast<std::int32_t>(static_cast<std::int16_t>(core.mem_r16(kCosineTable + offset)))};
 }
 
-void StageTileWedge::selectTiles(Core &core) const {
-  if (!plan_.widescreen()) {
-    if (!retailSelector_) {
-      lucent::error("wide", "Tekken 3 stage tile selector ran before its retail super was installed");
-      std::abort();
-    }
-    retailSelector_(&core);
+void StageTileWedge::selectTiles(Core &core, const GuestProjectionPlan &plan) const {
+  if (!plan.widescreen()) {
+    originalSelector(&core);
     return;
   }
 
@@ -343,12 +335,12 @@ void StageTileWedge::selectTiles(Core &core) const {
   };
 
   const std::int32_t retailWedge = static_cast<std::int32_t>(core.r[4]);
-  const std::int32_t wedge = derivedWedge(retailWedge);
+  const std::int32_t wedge = derivedWedge(retailWedge, plan);
   const std::int32_t half = wedge >> 1;
   const Wedge rays = wedgeFor(wedge,
                               block,
-                              guestDirection(core, directionIndex(query.heading, half, false)),
-                              guestDirection(core, directionIndex(query.heading, half, true)));
+                              guestDirection(core, directionIndex(query, half, false)),
+                              guestDirection(core, directionIndex(query, half, true)));
   const Result result = select(query, block, rays);
   switch (result.status) {
   case SelectionStatus::ok:
@@ -371,7 +363,7 @@ void StageTileWedge::selectTiles(Core &core) const {
 }
 
 void StageTileWedge::selectTilesOverride(Core *core) {
-  policyFrom(core, "stage tile selector").stageWedge().selectTiles(*core);
+  policyFrom(core, "stage tile selector").stageWedge().selectTiles(*core, session(*core).projectionPlan);
 }
 
 } // namespace tekken3::widescreen

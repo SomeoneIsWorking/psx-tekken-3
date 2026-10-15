@@ -6,8 +6,8 @@ with its tracked .ini named through PSXPORT_SETTINGS. The witness is the product
 render_width / native_width pair. Widescreen only: both settings pin fps60=0 and an active fps60 row
 is a defect. Launches the product itself and kills only PIDs it captured.
 
-    tools/probe_tekken3_widescreen_pair.py --selftest
-    tools/probe_tekken3_widescreen_pair.py --disc "$DISC" --frame 1200
+    tools/probe_widescreen_pair.py --selftest
+    tools/probe_widescreen_pair.py --disc "$DISC" --frame 1200
 
 `--disc` or $PSXPORT_DISC names the image; there is no default.
 """
@@ -161,10 +161,7 @@ def run_leg(leg: str, frame: int, port: int, binary: pathlib.Path, timeout: int,
         "PSXPORT_DEBUG_SERVER": str(port),
         "PSXPORT_WATCHDOG": "900",
         "PSXPORT_PRESENT_SHOT_AT": str(frame),
-        "SDL_VIDEODRIVER": "offscreen",
         "SDL_AUDIODRIVER": "dummy",
-        "VK_ICD_FILENAMES": os.environ.get("VK_ICD_FILENAMES",
-                                           "/usr/share/vulkan/icd.d/radeon_icd.x86_64.json"),
     })
     print(f"[{leg}] settings={settings} aspect={aspect} sink={environment['PSXPORT_PRESENT_SINK']} "
           f"disc={disc}; target presented frame {frame}", flush=True)

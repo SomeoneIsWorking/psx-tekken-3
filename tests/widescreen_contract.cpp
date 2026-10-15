@@ -1,4 +1,5 @@
 #include "core.h"
+#include "stub_game_runtime.h"
 #include "widescreen/widescreen.h"
 
 #include <cstdint>
@@ -23,6 +24,17 @@ GuestProjectionPlan wideLatch(Core *, GuestProjectionGeometry geometry) {
   });
 }
 
+GuestProjectionPlan recordLatch(Core *, GuestProjectionGeometry geometry) {
+  return guest_projection_plan({
+      .path = RenderPath::Record,
+      .requested = PresentationAspect::Wide16x9,
+      .nativePresentation = {368, 480},
+      .nativeProjection = geometry,
+      .sink = {1920, 1080},
+      .vramWidth = 1024,
+  });
+}
+
 void retailDimensions(Core *core) {
   retailWidth = core->r[4];
   retailHeight = core->r[5];
@@ -38,11 +50,13 @@ bool measuredPresetsRemainDistinct() {
 }
 
 bool publicationWidesOnlyTheHorizontalOwners() {
-  auto core = std::make_unique<Core>();
+  psx::test::StubGameRuntime runtime;
+  auto core = std::make_unique<Core>(runtime);
   core->r[4] = 384;
   core->r[5] = 480;
   tekken3::widescreen::WidescreenProjection widescreen(wideLatch, retailDimensions);
-  widescreen.publishDimensions(*core);
+  GuestProjectionPlan plan;
+  widescreen.publishDimensions(*core, plan);
 
   return observedGeometry.extent.width == 384 && observedGeometry.extent.height == 480 &&
          observedGeometry.drawWidth == 368 && retailWidth == 512 && retailHeight == 480;
@@ -53,11 +67,13 @@ std::uint32_t packedVertex(std::int16_t vertexX, std::int16_t vertexY) {
 }
 
 bool wideStageAndEffectMarginsSurviveRetailClip() {
-  auto core = std::make_unique<Core>();
+  psx::test::StubGameRuntime runtime;
+  auto core = std::make_unique<Core>(runtime);
   tekken3::widescreen::WidescreenProjection widescreen(wideLatch, retailDimensions);
+  GuestProjectionPlan plan;
   core->r[4] = 384;
   core->r[5] = 480;
-  widescreen.publishDimensions(*core);
+  widescreen.publishDimensions(*core, plan);
 
   constexpr std::uint32_t command = 0x80010000u;
   constexpr std::uint32_t packet = 0x80011000u;
@@ -75,7 +91,7 @@ bool wideStageAndEffectMarginsSurviveRetailClip() {
   core->r[5] = packet;
   core->r[6] = orderingTable;
   core->r[7] = state;
-  widescreen.clipStagePrimitives(*core);
+  widescreen.clipStagePrimitives(*core, plan);
   if (core->mem_r32(state) != 24 || core->mem_r32(state + 4u) != 0 || core->mem_r32(packet) != 0x05123456u ||
       core->mem_r32(orderingTable) != (packet & 0x00FFFFFFu)) {
     return false;
@@ -96,22 +112,63 @@ bool wideStageAndEffectMarginsSurviveRetailClip() {
   core->r[5] = effectPacket;
   core->r[6] = effectOt;
   core->r[7] = effectContext;
-  widescreen.clipEffectPrimitive(*core);
+  widescreen.clipEffectPrimitive(*core, plan);
   return core->mem_r32(effectPacket) == 0x090ABCDEu && core->mem_r32(effectOt + 24u) == (effectPacket & 0x00FFFFFFu);
+}
+
+// One stage quad through the clipper; whether it was kept.
+bool stageQuadKept(tekken3::widescreen::WidescreenProjection &widescreen,
+                   const GuestProjectionPlan &plan,
+                   std::int16_t left,
+                   std::int16_t right) {
+  psx::test::StubGameRuntime runtime;
+  auto core = std::make_unique<Core>(runtime);
+  constexpr std::uint32_t command = 0x80010000u;
+  constexpr std::uint32_t packet = 0x80011000u;
+  constexpr std::uint32_t orderingTable = 0x80012000u;
+  constexpr std::uint32_t state = 0x80013000u;
+  core->mem_w32(command, 0x28000000u);
+  core->mem_w32(command + 4u, 0x03020100u);
+  core->mem_w32(0x1F800000u, packedVertex(left, 100));
+  core->mem_w32(0x1F800004u, packedVertex(right, 100));
+  core->mem_w32(0x1F800008u, packedVertex(left, 140));
+  core->mem_w32(0x1F80000Cu, packedVertex(right, 140));
+  core->mem_w32(state, 1);
+  core->mem_w32(state + 4u, 1);
+  core->r[4] = command;
+  core->r[5] = packet;
+  core->r[6] = orderingTable;
+  core->r[7] = state;
+  widescreen.clipStagePrimitives(*core, plan);
+  return core->mem_r32(state) == 24u;
+}
+
+// On Record the guest keeps its 368 columns and the canvas adds 62 each side: the backdrop tiles there are kept.
+bool recordCanvasMarginsKeepStageTiles() {
+  psx::test::StubGameRuntime runtime;
+  auto core = std::make_unique<Core>(runtime);
+  tekken3::widescreen::WidescreenProjection widescreen(recordLatch, retailDimensions);
+  GuestProjectionPlan plan;
+  core->r[4] = 384;
+  core->r[5] = 480;
+  widescreen.publishDimensions(*core, plan);
+  return plan.guestDrawWidth == 368 && stageQuadKept(widescreen, plan, -60, -30) &&
+         stageQuadKept(widescreen, plan, 392, 429) && !stageQuadKept(widescreen, plan, -100, -63) &&
+         !stageQuadKept(widescreen, plan, 430, 470);
 }
 
 } // namespace
 
 int main() {
   if (!measuredPresetsRemainDistinct() || !publicationWidesOnlyTheHorizontalOwners() ||
-      !wideStageAndEffectMarginsSurviveRetailClip()) {
+      !wideStageAndEffectMarginsSurviveRetailClip() || !recordCanvasMarginsKeepStageTiles()) {
     std::fprintf(stderr,
-                 "widescreen_contract: FAIL — Tekken projection publication lost its measured "
-                 "view/draw distinction\n");
+                 "widescreen_contract: FAIL — projection publication or a horizontal clipper broke its "
+                 "contract\n");
     return 1;
   }
   std::printf("widescreen_contract: PASS — 384x480/368 and 320x240/320 facts remain distinct; "
               "16:9 widens view 384->512 while preserving height 480, and stage/effect primitives "
-              "in the added margin survive retail x=368 clipping\n");
+              "in the added margin survive retail x=368 clipping, and on Record the canvas margins keep stage tiles\n");
   return 0;
 }

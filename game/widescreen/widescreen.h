@@ -10,22 +10,22 @@ class Core;
 
 namespace tekken3::widescreen {
 
-// The runtime's projection policy; aborts if Core has none.
+// The runtime's projection policy; aborts if Core's runtime has none.
 const WidescreenProjection &policyFrom(Core *core, const char *owner);
 
+// The policy is immutable; the plan each call latches is the caller's (the Core's session).
 class WidescreenProjection final : public GuestWidescreenProjection {
 public:
   using GuestBody = void (*)(Core *);
   using ProjectionLatch = GuestProjectionPlan (*)(Core *, GuestProjectionGeometry);
 
   WidescreenProjection();
-  explicit WidescreenProjection(ProjectionLatch latch);
   WidescreenProjection(ProjectionLatch latch, GuestBody retailDimensions);
 
-  void install(Core &core);
-  void publishDimensions(Core &core) const;
-  void clipStagePrimitives(Core &core) const;
-  void clipEffectPrimitive(Core &core) const;
+  void install(Core &core) const;
+  void publishDimensions(Core &core, GuestProjectionPlan &plan) const;
+  void clipStagePrimitives(Core &core, const GuestProjectionPlan &plan) const;
+  void clipEffectPrimitive(Core &core, const GuestProjectionPlan &plan) const;
 
   [[nodiscard]] const StageTileWedge &stageWedge() const;
 
@@ -37,11 +37,10 @@ private:
   static void effectClipOverride(Core *core);
 
   ProjectionLatch latch_;
-  GuestBody retailDimensions_ = nullptr;
-  GuestBody retailStageClip_ = nullptr;
-  GuestBody retailEffectClip_ = nullptr;
+  GuestBody retailDimensions_;
+  GuestBody retailStageClip_;
+  GuestBody retailEffectClip_;
   StageTileWedge stageWedge_;
-  mutable GuestProjectionPlan plan_;
 };
 
 } // namespace tekken3::widescreen
