@@ -22,7 +22,7 @@ constexpr psx::input::StockPadBuffers::Layout kPadBuffers{
 } // namespace
 
 // Every VSync outside the overridden display init passes a negative mode, a field-count query.
-Runtime::Runtime() : vsync_(field::kEntry, field::kCounter), pad_(kPadBuffers) {}
+Runtime::Runtime() : vsync_({.entry = field::kEntry, .queryCounter = field::kCounter}), pad_(kPadBuffers) {}
 
 void Runtime::startProgram(Core &core) {
   frame::FrameDriver::from(core).runBootPrefix(core);
@@ -50,18 +50,6 @@ void Runtime::deliverPad(Core &core, const psx::input::PadDelivery &delivery) {
 
 const GuestWidescreenProjection *Runtime::guestWidescreenProjection() const {
   return &projection_;
-}
-
-RenderCapabilities Runtime::renderCapabilities() const {
-  // The picture is the guest's GP0 output replayed from the frame record; native 60 fps, so no in-betweens.
-  return RenderCapabilities{
-      .defaultPath = RenderPath::Record,
-      .nativeRenderPath = false,
-  };
-}
-
-bool Runtime::guestVramIsPicture(const Game &) const {
-  return false;
 }
 
 bool Runtime::titleCommand(Core &core, const psx::game::TitleCommandLine &input, std::FILE *reply) {

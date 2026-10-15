@@ -65,7 +65,8 @@ bool run(std::uint32_t returnPc, psx::cpu::ExecutionBudget firstBudget, bool exp
     return false;
   }
   psx::cpu::ResumableGuestCall call;
-  call.begin(core, "synthetic frame mode call", kEntry, returnPc, psx::cpu::kUnboundedCallTurns);
+  call.begin(
+      core, "synthetic frame mode call", psx::cpu::GuestCallSite{kEntry, returnPc}, psx::cpu::kUnboundedCallTurns);
   psx::cpu::CallStep step = call.advance(std::nullopt, firstBudget);
   const bool firstReturned = step.outcome == psx::cpu::CallOutcome::Returned;
   if (firstReturned == expectSuspend || call.pending() != expectSuspend) {

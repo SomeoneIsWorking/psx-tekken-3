@@ -40,7 +40,7 @@ psxport's Lightrec executor.
 | `widescreen::StageTileWedge` | `game/widescreen/stage_tile_wedge.*` | `FUN_8006D95C`'s 6x6 stage-tile selection for a wedge widened in the tangent domain |
 | `field::kEntry`, `kCounter`, `readCounter` | `game/fieldclock/field_clock.*` | libetc VSync and the field count a negative mode returns |
 | tests | `tests/` | `tekken3_<name>` CTest targets over the shipping sources; `recording_machine.h` stands in for `CoreMachine`, which only the boot smoke reaches, as does `Runtime::titleCommand` |
-| tools | `tools/` | Launcher, provisioning, `psxport_fetch.py`, the verifier, `verify_vsync_field_clock.py`, RE probes, `policy/accepted.txt` |
+| tools | `tools/` | Launcher and the `external/psxport` fetch (`run.py`), provisioning, the verifier, `verify_vsync_field_clock.py`, RE probes, `policy/accepted.txt` |
 
 ## The frame turn
 

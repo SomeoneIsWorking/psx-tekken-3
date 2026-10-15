@@ -1,27 +1,23 @@
 // The guest's main-loop bodies the title replaces: boot prefix, frame barrier, display init and the field step.
 #pragma once
 
+#include "guest_call_site.h"
+
 #include <array>
 #include <cstdint>
 
 namespace tekken3::frame {
-
-// A jal site: the callee and the return address the jal sets.
-struct CallSite {
-  std::uint32_t entry = 0;
-  std::uint32_t returnPc = 0;
-};
 
 // Machine boundary shared by the Core adapter and the sequence tests.
 class Machine {
 public:
   virtual ~Machine() = default;
 
-  virtual void call(CallSite site) = 0;
-  virtual void call1(CallSite site, std::uint32_t a0) = 0;
-  virtual void call3(CallSite site, const std::array<std::uint32_t, 3> &arguments) = 0;
+  virtual void call(psx::cpu::GuestCallSite site) = 0;
+  virtual void call1(psx::cpu::GuestCallSite site, std::uint32_t a0) = 0;
+  virtual void call3(psx::cpu::GuestCallSite site, const std::array<std::uint32_t, 3> &arguments) = 0;
   // A guest call that may outlive the field it starts on; both return true once it has returned.
-  virtual bool beginSpanningCall(CallSite site) = 0;
+  virtual bool beginSpanningCall(psx::cpu::GuestCallSite site) = 0;
   virtual bool resumeSpanningCall() = 0;
   virtual bool spanningCallPending() const = 0;
   virtual void deliverEvent(std::uint32_t eventClass, std::uint32_t spec) = 0;

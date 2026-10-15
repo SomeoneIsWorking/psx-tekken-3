@@ -20,25 +20,25 @@ constexpr auto kFieldTurn = psx::cpu::ExecutionBudget::fromCycles(FiniteFrame::k
 
 CoreMachine::CoreMachine(Game &game, Core &core) : game_(game), core_(core) {}
 
-void CoreMachine::call(CallSite site) {
+void CoreMachine::call(psx::cpu::GuestCallSite site) {
   core_.r[31] = site.returnPc;
   execution::FiniteGuestCall::callToReturn(core_, site.entry, "Tekken3 frame guest call");
 }
 
-void CoreMachine::call1(CallSite site, std::uint32_t a0) {
+void CoreMachine::call1(psx::cpu::GuestCallSite site, std::uint32_t a0) {
   core_.r[4] = a0;
   call(site);
 }
 
-void CoreMachine::call3(CallSite site, const std::array<std::uint32_t, 3> &arguments) {
+void CoreMachine::call3(psx::cpu::GuestCallSite site, const std::array<std::uint32_t, 3> &arguments) {
   core_.r[4] = arguments[0];
   core_.r[5] = arguments[1];
   core_.r[6] = arguments[2];
   call(site);
 }
 
-bool CoreMachine::beginSpanningCall(CallSite site) {
-  spanningCall_.begin(core_, "Tekken3 spanning guest call", site.entry, site.returnPc, psx::cpu::kUnboundedCallTurns);
+bool CoreMachine::beginSpanningCall(psx::cpu::GuestCallSite site) {
+  spanningCall_.begin(core_, "Tekken3 spanning guest call", site, psx::cpu::kUnboundedCallTurns);
   return settled(advance());
 }
 
@@ -113,7 +113,7 @@ void CoreMachine::write32(std::uint32_t address, std::uint32_t value) {
 }
 
 void CoreMachine::commitPresentation() {
-  game_.presentation.commit(&core_);
+  game_.presentation.commit(&core_, 1);
 }
 
 void CoreMachine::serviceAudioSink() {

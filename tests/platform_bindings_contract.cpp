@@ -78,14 +78,9 @@ int main() {
         "the pad packet did not reach libpad's slot 0 receive buffer");
   check(core.mem_r8(kPadSlot1) == 0xFFu, "a disconnected slot 1 was not marked empty");
 
-  const RenderCapabilities capabilities = runtime.renderCapabilities();
-  check(capabilities.defaultPath == RenderPath::Record && !capabilities.nativeRenderPath,
-        "Tekken does not ship the record path");
-  check(render_path_resolve(RenderPath::Native, capabilities) == RenderPath::Record,
-        "a native-path request did not fall back to the record path");
+  check(core.rsub.mode.path() == RenderPath::Record, "Tekken does not present on the record path");
   check(!runtime.interpolates(), "Tekken runs at 60 fps and must not interpolate");
   check(runtime.guestWidescreenProjection() != nullptr, "the guest projection owner is missing");
-  check(!runtime.guestVramIsPicture(*game), "guest VRAM is not the picture on the record path");
 
   std::printf("tekken3 platform bindings: %s\n", failures == 0 ? "PASS" : "FAIL");
   return failures == 0 ? 0 : 1;

@@ -2,7 +2,7 @@
 
 #include "core.h"
 #include "game.h"
-#include "gpu_vk.h"
+#include "guest_widescreen_projection.h"
 #include "mods.h"
 #include "native_dispatch.h"
 #include "runtime/session.h"
@@ -100,7 +100,7 @@ const WidescreenProjection &policyFrom(Core *core, const char *owner) {
 }
 
 WidescreenProjection::WidescreenProjection()
-    : latch_(gpu_vk_latch_guest_projection), retailDimensions_(originalViewDimensions),
+    : latch_(psx::present::latchGuestProjection), retailDimensions_(originalViewDimensions),
       retailStageClip_(originalStageClip), retailEffectClip_(originalEffectClip) {}
 
 WidescreenProjection::WidescreenProjection(ProjectionLatch latch, GuestBody retailDimensions)
@@ -142,7 +142,7 @@ const StageTileWedge &WidescreenProjection::stageWedge() const {
 
 void WidescreenProjection::publishDimensions(Core &core, GuestProjectionPlan &plan) const {
   const GuestProjectionGeometry native = measuredGeometry(core.r[4], core.r[5]);
-  plan = latch_(&core, native);
+  plan = latch_(core, native);
   if (plan.projectionExtent.width == 0 || plan.projectionExtent.width > std::numeric_limits<std::uint16_t>::max()) {
     lucent::error("wide", "Tekken 3 received invalid projected width {}", plan.projectionExtent.width);
     std::abort();

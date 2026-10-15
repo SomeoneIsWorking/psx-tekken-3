@@ -40,7 +40,7 @@ ASPECT_VALUES = {"4x3": 0, "16x9": 1}
 
 # Keys `Mods::load` accepts. It has no comment support (every line splits on the first `=`).
 SETTINGS_KEYS = frozenset({
-    "aspect", "ires", "ires_auto", "face_order", "ssao", "light", "shadows",
+    "aspect", "ires", "ires_auto", "ssao", "light", "shadows",
     "shadow_strength", "fps60", "ssao_strength", "ssao_radius", "ssao_bias", "ssao_range",
     "light_dir", "light_ambient", "light_diffuse",
 })

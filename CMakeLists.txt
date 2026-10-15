@@ -5,12 +5,12 @@ enable_testing()
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Framework checkout: a symlink or clone set up by tools/psxport_fetch.py --auto.
+# Framework checkout: a symlink or clone set up by psxport's tools/psxport_fetch.py.
 set(PSXPORT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/psxport" CACHE PATH
     "psxport framework source directory (default: external/psxport)")
 if(NOT EXISTS "${PSXPORT_DIR}/cmake/psxport.cmake")
   message(FATAL_ERROR "PSXPORT_DIR=${PSXPORT_DIR} has no cmake/psxport.cmake — run "
-                      "`uv run --frozen python tools/psxport_fetch.py --auto`, or point PSXPORT_DIR at a psxport checkout.")
+                      "./run.sh once to fetch it, or point PSXPORT_DIR at a psxport checkout.")
 endif()
 add_subdirectory("${PSXPORT_DIR}" psxport_build)
 

@@ -22,22 +22,22 @@ struct Operation {
 
 class RecordingMachine final : public tekken3::frame::Machine {
 public:
-  void call(tekken3::frame::CallSite site) override {
+  void call(psx::cpu::GuestCallSite site) override {
     operations.push_back({"call", site.entry, site.returnPc});
     result = callResults[site.entry];
   }
 
-  void call1(tekken3::frame::CallSite site, std::uint32_t a0) override {
+  void call1(psx::cpu::GuestCallSite site, std::uint32_t a0) override {
     operations.push_back({"call1", site.entry, site.returnPc, a0});
     result = callResults[site.entry];
   }
 
-  void call3(tekken3::frame::CallSite site, const std::array<std::uint32_t, 3> &arguments) override {
+  void call3(psx::cpu::GuestCallSite site, const std::array<std::uint32_t, 3> &arguments) override {
     operations.push_back({"call3", site.entry, site.returnPc, arguments[0], arguments[1], arguments[2]});
     result = callResults[site.entry];
   }
 
-  bool beginSpanningCall(tekken3::frame::CallSite site) override {
+  bool beginSpanningCall(psx::cpu::GuestCallSite site) override {
     ++boundedStarts;
     call(site);
     pending = !boundedStartReturns;

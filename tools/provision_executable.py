@@ -38,7 +38,7 @@ try:
 except ImportError as exc:
     raise SystemExit(
         f"REFUSED: cannot import psxport's PS-X EXE loader from {PSXPORT}; "
-        "run tools/psxport_fetch.py --auto or set PSXPORT_DIR"
+        "run ./run.sh once to fetch it, or set PSXPORT_DIR"
     ) from exc
 
 

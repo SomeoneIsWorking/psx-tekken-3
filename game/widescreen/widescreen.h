@@ -17,7 +17,7 @@ const WidescreenProjection &policyFrom(Core *core, const char *owner);
 class WidescreenProjection final : public GuestWidescreenProjection {
 public:
   using GuestBody = void (*)(Core *);
-  using ProjectionLatch = GuestProjectionPlan (*)(Core *, GuestProjectionGeometry);
+  using ProjectionLatch = GuestProjectionPlan (*)(Core &, GuestProjectionGeometry);
 
   WidescreenProjection();
   WidescreenProjection(ProjectionLatch latch, GuestBody retailDimensions);

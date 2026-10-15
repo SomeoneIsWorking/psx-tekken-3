@@ -107,7 +107,7 @@ class LauncherTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(stderr, "")
         self.assertIn("launching Tekken 3", stdout)
-        self.assertIn([LOCKED_PYTHON, "tools/psxport_fetch.py", "--auto"], commands)
+        self.assertNotIn(run.FRAMEWORK_FETCH, commands)
         self.assertIn(
             [LOCKED_PYTHON, "-B", "tools/provision_executable.py", "Tekken 3.chd"],
             commands,
@@ -130,6 +130,12 @@ class LauncherTest(unittest.TestCase):
         self.assertFalse(any(option.startswith("-DCMAKE_C_COMPILER=") for option in configure))
         self.assertFalse(any(option.startswith("-DCMAKE_CXX_COMPILER=") for option in configure))
         self.assertEqual(host.which_queries, ["cmake", "git", "pkg-config"])
+
+    def test_a_fresh_clone_fetches_the_framework_from_psxport(self) -> None:
+        (self.root / "external/psxport/cmake/psxport.cmake").unlink()
+        host = FakeHost()
+        self.invoke(host, "Tekken 3.chd")
+        self.assertIn(run.FRAMEWORK_FETCH, self.commands(host))
 
     def test_prepare_only_builds_product_without_launching(self) -> None:
         host = FakeHost()
@@ -193,9 +199,7 @@ class LauncherTest(unittest.TestCase):
 
         self.assertEqual(code, 0)
         self.assertEqual(stderr, "")
-        self.assertNotIn(
-            [LOCKED_PYTHON, "tools/psxport_fetch.py", "--auto"], self.commands(host)
-        )
+        self.assertNotIn(run.FRAMEWORK_FETCH, self.commands(host))
 
     def test_provision_failure_stops_before_player_build(self) -> None:
         host = FakeHost(fail_token="tools/provision_executable.py")

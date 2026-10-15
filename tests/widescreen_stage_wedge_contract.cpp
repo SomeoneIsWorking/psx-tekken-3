@@ -19,8 +19,8 @@ std::uint32_t retailWidth = 0;
 std::uint32_t retailHeight = 0;
 
 GuestProjectionPlan planFor(PresentationAspect aspect, int nativePresentationWidth, int sinkWidth, int sinkHeight) {
-  return guest_projection_plan({
-      .path = RenderPath::Gte,
+  return psx::present::guestProjectionPlan({
+      .path = RenderPath::Record,
       .requested = aspect,
       .nativePresentation = {nativePresentationWidth, 448},
       .nativeProjection = {{384, 480}, 368},
@@ -29,7 +29,7 @@ GuestProjectionPlan planFor(PresentationAspect aspect, int nativePresentationWid
   });
 }
 
-GuestProjectionPlan wideLatch(Core *, GuestProjectionGeometry geometry) {
+GuestProjectionPlan wideLatch(Core &, GuestProjectionGeometry geometry) {
   observedGeometry = geometry;
   return planFor(PresentationAspect::Wide16x9, 368, 1920, 1080);
 }
@@ -593,8 +593,8 @@ bool productionPathPublishesThePlanAndWritesTheGrid() {
       retailWidth != kWideProjectionWidth || retailHeight != 480) {
     return ok("the plan must widen the view 384->512 and keep the 368 draw measurement");
   }
-  if (plan.projectionExtent.width != kWideProjectionWidth || plan.guestDrawWidth != kWideDrawWidth) {
-    return ok("publication must latch the widened plan");
+  if (plan.projectionExtent.width != kWideProjectionWidth || plan.guestDrawWidth != kBootDrawWidth) {
+    return ok("publication must latch the widened view with the retail draw width");
   }
   if (tekken3::widescreen::StageTileWedge::derivedWedge(kRetailWedge, plan) != 762 ||
       tekken3::widescreen::StageTileWedge::derivedWedge(kAlternateWedge, plan) != 962) {

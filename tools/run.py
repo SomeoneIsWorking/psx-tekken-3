@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import TextIO
 
 ROOT = Path(__file__).resolve().parents[1]
+FRAMEWORK_FETCH = ["uv", "run", "--no-project", "https://raw.githubusercontent.com/SomeoneIsWorking/psxport/main/tools/psxport_fetch.py", "--auto"]
 CYAN = "\033[1;36m"
 RED = "\033[1;31m"
 RESET = "\033[0m"
@@ -244,10 +245,10 @@ def run_launcher(
         require_libraries(machine, root=root, environment=environment)
 
         setting = environment.get("PSXPORT_DIR") or "external/psxport"
-        if "PSXPORT_DIR" not in environment:
+        if "PSXPORT_DIR" not in environment and not (root / "external/psxport/cmake/psxport.cmake").is_file():
             run_stage(
                 machine,
-                [python_executable, "tools/psxport_fetch.py", "--auto"],
+                FRAMEWORK_FETCH,
                 "could not resolve external/psxport",
                 root=root,
                 environment=environment,
