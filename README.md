@@ -35,9 +35,8 @@ title contract, and inspects the linked execution boundary:
 uv run --frozen python tools/verify.py
 ```
 
-`game/program/title_runtime.*` owns framework-facing game behavior. Its temporary legacy adapter view
-has been removed: it derives directly from `GameRuntime`, returns an immutable `GuestProgramImage`
-for measured resident text, and exposes null legacy config/hooks/context views.
+`tekken3::Runtime` (`game/runtime/runtime.*`) owns framework-facing game behavior; `docs/codemap.md`
+lists every owner and `docs/features.md` where each joins a psxport feature.
 
 `tekken3_port` is the only player product. The asset-free gate proves that it links to the shared
 Lightrec executor and title-native owners, but it contains no game bytes and therefore claims no

@@ -1,26 +1,13 @@
 #include "frame/finite_frame.h"
 
-#include "core.h"
-#include "execution/finite_guest_call.h"
-#include "execution_control.h"
-#include "execution_services.h"
-#include "game.h"
-#include "native_dispatch.h"
-#include "segment_clock.h"
-
 #include <array>
 #include <cstddef>
-#include <cstdlib>
-#include <lucent/log.h>
 
 namespace tekken3::frame {
 namespace {
 
-const auto kFieldTurn = psx::cpu::ExecutionBudget::fromCycles(FiniteFrame::kFieldTurnCycles);
 constexpr std::uint32_t kFirstInitializer = 0x80079D10u;
 constexpr std::uint32_t kSecondInitializer = 0x800B0548u;
-constexpr std::uint32_t kFrameTimerEventClass = 0xF2000002u;
-constexpr std::uint32_t kFrameTimerEventSpec = 0x00000002u;
 constexpr std::uint32_t kFrameTimerSnapshot = 0x80029924u;
 constexpr std::uint32_t kCompactOrderingTables = 0x80029A28u;
 constexpr std::uint32_t kAdvanceWaitPrng = 0x8004CE54u;
@@ -68,123 +55,15 @@ constexpr std::array<std::uint32_t, 20> kModeFunctions{
     0x800F0458u, 0x800F18E8u, 0x800501C0u, 0x800C2434u, 0x8004FF74u, 0x800FF0C4u,
 };
 
-class CoreMachine final : public Machine {
-public:
-  CoreMachine(Game &game, Core &core, psx::cpu::ResumableGuestCall &spanningCall)
-      : game_(game), core_(core), spanningCall_(spanningCall) {}
-
-  void call(std::uint32_t address, std::uint32_t returnPc) override {
-    core_.r[31] = returnPc;
-    execution::FiniteGuestCall::callToReturn(core_, address, "Tekken3 frame guest call");
-  }
-
-  void call1(std::uint32_t address, std::uint32_t returnPc, std::uint32_t a0) override {
-    core_.r[4] = a0;
-    call(address, returnPc);
-  }
-
-  void
-  call3(std::uint32_t address, std::uint32_t returnPc, std::uint32_t a0, std::uint32_t a1, std::uint32_t a2) override {
-    core_.r[4] = a0;
-    core_.r[5] = a1;
-    core_.r[6] = a2;
-    call(address, returnPc);
-  }
-
-  bool beginSpanningCall(std::uint32_t address, std::uint32_t returnPc) override {
-    spanningCall_.begin(core_, "Tekken3 spanning guest call", address, returnPc, psx::cpu::kUnboundedCallTurns);
-    return settled(step());
-  }
-
-  bool resumeSpanningCall() override {
-    return settled(step());
-  }
-
-  // CdInit, mode 0 (resource decompress) and mode 2 (sector wait) span fields; the frame state bounds the wait.
-  bool settled(const psx::cpu::CallStep &step) {
-    if (step.outcome == psx::cpu::CallOutcome::Refused) {
-      lucent::error("tekken3-guest",
-                    "Tekken3 spanning guest call refused after {} host turn(s) and {} cycles at 0x{:08X}: {}",
-                    step.turns,
-                    step.cycles,
-                    step.guestPc,
-                    step.detail);
-      std::abort();
-    }
-    return step.outcome == psx::cpu::CallOutcome::Returned;
-  }
-
-  psx::cpu::CallStep step() {
-    return spanningCall_.advance({}, kFieldTurn);
-  }
-
-  void deliverEvent(std::uint32_t eventClass, std::uint32_t spec) override {
-    game_.hle.deliverEvent(eventClass, spec);
-  }
-
-  std::uint32_t returnValue() const override {
-    return core_.r[2];
-  }
-
-  std::uint32_t readRegister(std::uint32_t index) const override {
-    return core_.r[index];
-  }
-
-  void writeRegister(std::uint32_t index, std::uint32_t value) override {
-    core_.r[index] = value;
-  }
-
-  void tick(std::uint32_t guestInstructions) override {
-    psx::cpu::accountGuestInstructions(core_, guestInstructions);
-  }
-
-  std::uint8_t read8(std::uint32_t address) const override {
-    return core_.mem_r8(address);
-  }
-
-  std::uint16_t read16(std::uint32_t address) const override {
-    return core_.mem_r16(address);
-  }
-
-  std::uint32_t read32(std::uint32_t address) const override {
-    return core_.mem_r32(address);
-  }
-
-  void write8(std::uint32_t address, std::uint8_t value) override {
-    core_.mem_w8(address, value);
-  }
-
-  void write32(std::uint32_t address, std::uint32_t value) override {
-    core_.mem_w32(address, value);
-  }
-
-  void commitPresentation() override {
-    game_.presentation.commit(&core_, 1, game_.temporalPresentation.get());
-  }
-
-  void serviceAudioSink() override {
-    game_.spu_audio.frame();
-  }
-
-  void servicePad() override {
-    game_.pad.serviceFrame();
-  }
-
-private:
-  Game &game_;
-  Core &core_;
-  psx::cpu::ResumableGuestCall &spanningCall_;
-};
-
 void finishFrame(Machine &machine, std::uint32_t buffer) {
   machine.writeRegister(kV0, 0x800B0000u);
   const std::uint32_t bufferPacketBase = machine.read32(buffer + 4u);
   const std::uint32_t mainOtRoot = machine.read32(kMainOtRoot);
   machine.tick(7);
-  machine.call3(kSpliceOt, 0x80028DECu, bufferPacketBase + 0x20u, mainOtRoot, mainOtRoot + 0x20u);
+  machine.call3({kSpliceOt, 0x80028DECu}, {bufferPacketBase + 0x20u, mainOtRoot, mainOtRoot + 0x20u});
   const std::uint32_t secondaryOtRoot = machine.read32(kSecondaryOtRoot);
   machine.tick(8);
-  machine.call3(kSpliceOt, 0x80028E0Cu, bufferPacketBase + 0xFB8u, secondaryOtRoot, secondaryOtRoot + 0x20u);
+  machine.call3({kSpliceOt, 0x80028E0Cu}, {bufferPacketBase + 0xFB8u, secondaryOtRoot, secondaryOtRoot + 0x20u});
   machine.tick(2);
 }
 
@@ -209,9 +88,9 @@ void FiniteFrame::stepBoot(Machine &machine, StepState &state) {
     if (state.callPending) {
       returned = machine.resumeSpanningCall();
     } else if (state.stage == Stage::FirstInitializer) {
-      returned = machine.beginSpanningCall(kFirstInitializer, 0x80028BB8u);
+      returned = machine.beginSpanningCall({kFirstInitializer, 0x80028BB8u});
     } else {
-      returned = machine.beginSpanningCall(kSecondInitializer, 0x80028BC0u);
+      returned = machine.beginSpanningCall({kSecondInitializer, 0x80028BC0u});
     }
     state.callPending = !returned;
     if (!returned) {
@@ -241,11 +120,11 @@ bool FiniteFrame::runBarrier(Machine &machine) {
 
   machine.write32(kFrameWaitDepth, 0);
   machine.tick(8);
-  machine.call1(kFrameTimerSnapshot, 0x800296E4u, 1);
+  machine.call1({kFrameTimerSnapshot, 0x800296E4u}, 1);
   machine.tick(5);
   if (machine.read32(kFrameTimerEnabled) != 0) {
     machine.tick(2);
-    machine.call(kCompactOrderingTables, 0x80029700u);
+    machine.call({kCompactOrderingTables, 0x80029700u});
     machine.write32(kPriorBuffer, machine.read32(kCurrentBuffer));
     machine.tick(5);
   }
@@ -257,13 +136,13 @@ bool FiniteFrame::runBarrier(Machine &machine) {
   // One RCntCNT2 delivery per turn replaces the hardware wait; the wait body's PRNG iteration and
   // accumulator update still run once before the callback releases the barrier.
   machine.tick(2);
-  machine.call(kAdvanceWaitPrng, 0x80029728u);
+  machine.call({kAdvanceWaitPrng, 0x80029728u});
   machine.write32(kWaitPrng, (machine.read32(kWaitPrng) + 1u) * kWaitPrngMultiplier);
   machine.tick(15);
   // Libpad fills these buffers before the CNT2 callback parses them; publish this frame's packet.
   machine.servicePad();
   // 0x80029894 registers the RCntCNT2 event as EvMdINTR; deliver through the BIOS event owner.
-  machine.deliverEvent(kFrameTimerEventClass, kFrameTimerEventSpec);
+  machine.deliverEvent(FiniteFrame::kFrameTimerEventClass, FiniteFrame::kFrameTimerEventSpec);
   const bool released = machine.read32(kFrameEventCount) != 0;
   machine.write32(kCallbackRenderGuard, 0);
 
@@ -284,13 +163,13 @@ void FiniteFrame::runDisplayInit(Machine &machine) {
   // The 0x800B0954 body minus its leading VSync(0), which would be a second cadence owner.
   machine.tick(4);
   machine.tick(2);
-  machine.call1(kDisplayReset, 0x800B096Cu, 0);
+  machine.call1({kDisplayReset, 0x800B096Cu}, 0);
   machine.tick(2);
-  machine.call(kDisplayResetTail, 0x800B0974u);
+  machine.call({kDisplayResetTail, 0x800B0974u});
   machine.tick(2);
-  machine.call(kEventReset, 0x800B097Cu);
+  machine.call({kEventReset, 0x800B097Cu});
   machine.tick(2);
-  machine.call(kDisplayEventInit, 0x800B0984u);
+  machine.call({kDisplayEventInit, 0x800B0984u});
   machine.write8(kDisplayEventBase + 0x20u, 0);
   machine.write8(kDisplayEventBase + 0x21u, 0);
 
@@ -320,19 +199,19 @@ void FiniteFrame::step(Machine &machine, StepState &state) {
   }
   // The barrier callback submits the prior buffer and advances sound; commit those in that order.
   machine.tick(2);
-  machine.call(kFrameBarrier, 0x80028BD4u);
+  machine.call({kFrameBarrier, 0x80028BD4u});
   machine.commitPresentation();
   machine.serviceAudioSink();
 
   machine.tick(2);
-  machine.call(kCdXaState, 0x80028BDCu);
+  machine.call({kCdXaState, 0x80028BDCu});
   machine.write32(kFrameCounter, machine.read32(kFrameCounter) + 1u);
   machine.tick(6);
-  machine.call(kRenderModeQuery, 0x80028BF4u);
+  machine.call({kRenderModeQuery, 0x80028BF4u});
   machine.tick(2);
   if (machine.returnValue() == 0) {
     machine.tick(2);
-    machine.call(kSelectBuffer, 0x80028C04u);
+    machine.call({kSelectBuffer, 0x80028C04u});
     machine.write32(kActiveBufferIndex, machine.returnValue());
     machine.tick(1);
   }
@@ -341,11 +220,11 @@ void FiniteFrame::step(Machine &machine, StepState &state) {
   const std::uint32_t buffer = kBufferDescriptors + bufferIndex * 20u;
   machine.write32(kCurrentBuffer, buffer);
   machine.tick(15);
-  machine.call1(kSelectGeometry, 0x80028C44u, machine.read32(kGeometryStates + bufferIndex * 28u));
+  machine.call1({kSelectGeometry, 0x80028C44u}, machine.read32(kGeometryStates + bufferIndex * 28u));
   machine.tick(4);
-  machine.call3(kClearMainOt, 0x80028C54u, 0, 0, buffer);
+  machine.call3({kClearMainOt, 0x80028C54u}, {0, 0, buffer});
   machine.tick(3);
-  machine.call1(kSelectOtRoots, 0x80028C60u, bufferIndex);
+  machine.call1({kSelectOtRoots, 0x80028C60u}, bufferIndex);
 
   const std::int16_t mode = static_cast<std::int16_t>(machine.read16(kRenderMode));
   machine.tick(6);
@@ -357,7 +236,7 @@ void FiniteFrame::step(Machine &machine, StepState &state) {
     // Every mode body may outlive a field (mode 2, 0x8004FA60, spins in FUN_8006BEA8 on 0x800A069E
     // until a later sector completion), so it enters through the spanning call.
     state.buffer = buffer;
-    if (!machine.beginSpanningCall(address, returnPc)) {
+    if (!machine.beginSpanningCall({address, returnPc})) {
       state.callPending = true;
       return;
     }
@@ -367,98 +246,6 @@ void FiniteFrame::step(Machine &machine, StepState &state) {
   }
 
   finishFrame(machine, buffer);
-}
-
-FrameDriver::FrameDriver(Game &game) : game_(game) {}
-
-FrameDriver &FrameDriver::from(Core &core) {
-  if (!core.game || !core.game->frameDriver) {
-    lucent::error("frame", "Tekken 3 frame callback ran without its title FrameDriver");
-    std::abort();
-  }
-  auto *const driver = dynamic_cast<FrameDriver *>(core.game->frameDriver.get());
-  if (!driver) {
-    lucent::error("frame", "Tekken 3 frame callback reached another title's FrameDriver");
-    std::abort();
-  }
-  return *driver;
-}
-
-void FrameDriver::mainOverride(Core *core) {
-  FrameDriver &driver = from(*core);
-  if (!driver.bootStarted_ || driver.bootComplete_) {
-    lucent::error("boot", "Tekken 3 finite main reached outside its one boot dispatch");
-    std::abort();
-  }
-  CoreMachine machine(driver.game_, *core, driver.spanningCall_);
-  FiniteFrame::runBootPrefix(machine);
-  driver.bootComplete_ = true;
-  psx::cpu::requestExecutionExit(*core, psx::cpu::ExecutionExitReason::HostService);
-}
-
-void FrameDriver::barrierOverride(Core *core) {
-  FrameDriver &driver = from(*core);
-  CoreMachine machine(driver.game_, *core, driver.spanningCall_);
-  if (!FiniteFrame::runBarrier(machine)) {
-    lucent::error("frame",
-                  "Tekken 3 RCntCNT2 event class 0x{:08X} spec 0x{:08X} did not release the frame barrier",
-                  kFrameTimerEventClass,
-                  kFrameTimerEventSpec);
-    std::abort();
-  }
-}
-
-void FrameDriver::displayInitOverride(Core *core) {
-  FrameDriver &driver = from(*core);
-  CoreMachine machine(driver.game_, *core, driver.spanningCall_);
-  FiniteFrame::runDisplayInit(machine);
-}
-
-void FrameDriver::installOverrides() {
-  psx::cpu::installNativeOverride(game_.core, FiniteFrame::kMain, "Tekken3::finiteMain", mainOverride);
-  psx::cpu::installNativeOverride(game_.core, FiniteFrame::kFrameBarrier, "Tekken3::frameBarrier", barrierOverride);
-  psx::cpu::installNativeOverride(game_.core, FiniteFrame::kDisplayInit, "Tekken3::displayInit", displayInitOverride);
-}
-
-void FrameDriver::runBootPrefix(Core &core, std::uint32_t programEntry) {
-  if (bootStarted_) {
-    lucent::error("boot", "Tekken 3 finite boot prefix was requested more than once");
-    std::abort();
-  }
-  bootStarted_ = true;
-  const auto result = psx::cpu::dispatchGuest(core, programEntry, psx::cpu::ExecutionBudget::currentTurn(core));
-  if (result.reason != psx::cpu::ExecutionExitReason::HostService) {
-    lucent::error("boot",
-                  "Tekken 3 boot exited as {} at 0x{:08X}, expected finite-main host transfer",
-                  psx::cpu::executionExitName(result.reason),
-                  result.guestPc);
-    std::abort();
-  }
-  if (!bootComplete_) {
-    lucent::error("boot",
-                  "Tekken 3 retail entry 0x{:08X} returned without reaching finite main 0x{:08X}",
-                  programEntry,
-                  FiniteFrame::kMain);
-    std::abort();
-  }
-  lucent::info("boot", "Tekken 3 finite main prefix complete; native driver owns loop 0x80028BCC");
-}
-
-void FrameDriver::stepFrame(Core &core, std::uint32_t frame) {
-  if (!bootComplete_) {
-    lucent::error("frame", "Tekken 3 frame {} ran before its finite boot prefix", frame);
-    std::abort();
-  }
-  if (stepState_.callPending != spanningCall_.pending()) {
-    lucent::error("frame", "Tekken 3 spanning call and frame continuation disagree at field {}", frame);
-    std::abort();
-  }
-  if (!stepState_.callPending) {
-    game_.timing.logicFrame = frame;
-    game_.core.rsub.otAttr.beginLogicFrame(frame);
-  }
-  CoreMachine machine(game_, core, spanningCall_);
-  FiniteFrame::step(machine, stepState_);
 }
 
 } // namespace tekken3::frame

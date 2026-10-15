@@ -46,7 +46,6 @@ VSYNC_BRANCH_DELAY = (
 )
 VSYNC_FIELD_LOAD = 0x80085A0C  # lw v0, disp(v0)     -- the negative-mode field read
 VSYNC_FIELD_LOAD_DELAY = 0x80085A10  # j <epilogue>  -- the negative arm returns v0
-VSYNC_BODY_END = 0x80085B20  # next function start
 VSYNC_INIT_FIELD_STORE = 0x8008637C  # sw zero, disp(at) -- the init
 VSYNC_CALLBACK_FIELD_STORE = 0x800863DC  # the per-vblank callback's increment
 CALLBACK_BODY = (0x800863B0, 0x8008641C)
@@ -70,7 +69,6 @@ DECOMPILED_RESIDUAL = (
 
 FIELD_COUNTER_NAME = "kCounter"
 ENTRY_NAME = "kEntry"
-BODY_END_NAME = "kBodyEnd"
 
 
 class Refusal(Exception):
@@ -255,7 +253,7 @@ def resolve_by_walk(image: psx_exe.PsxExe, call: int, limit: int) -> tuple[int |
 
 def parse_header(text: str) -> dict[str, int]:
     values: dict[str, int] = {}
-    for name in (ENTRY_NAME, BODY_END_NAME, FIELD_COUNTER_NAME):
+    for name in (ENTRY_NAME, FIELD_COUNTER_NAME):
         match = re.search(rf"\b{name}\s*=\s*(0x[0-9A-Fa-f]{{8}})u\s*;", text)
         if not match:
             raise Refusal(
@@ -346,7 +344,6 @@ def check(image: psx_exe.PsxExe, header_text: str) -> list[str]:
 
     for name, measured in (
         (ENTRY_NAME, None),
-        (BODY_END_NAME, VSYNC_BODY_END),
         (FIELD_COUNTER_NAME, measured_field),
     ):
         if name == ENTRY_NAME:

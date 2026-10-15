@@ -11,6 +11,7 @@
 #include "lightrec_executor.h"
 #include "psx_exe_image.h"
 #include "resumable_guest_call.h"
+#include "stub_game_runtime.h"
 
 #include <array>
 #include <csignal>
@@ -51,7 +52,6 @@ constexpr std::uint64_t kFieldCycles = 4000u;
 constexpr std::uint32_t kBodyLoopPc = kModeFunction2 + 2u * 4u;  // index 2,  the lbu
 constexpr std::uint32_t kBodyBeqPc = kModeFunction2 + 4u * 4u;   // index 4,  the beq
 constexpr std::uint32_t kBodyExitPc = kModeFunction2 + 14u * 4u; // index 14, the jr $ra
-constexpr std::uint32_t kBodyJmpPc = kModeFunction2 + 10u * 4u;  // index 10, the j
 
 constexpr std::array<std::uint32_t, 16> kSpinBody{{
     mips::lui(mips::kT0, 0x800A),                               // 0
@@ -64,7 +64,7 @@ constexpr std::array<std::uint32_t, 16> kSpinBody{{
     mips::nop(),                                                // 7   load delay slot
     mips::addiu(mips::kT3, mips::kT3, 1),                       // 8
     mips::sw(mips::kT1, mips::kT3, 0x698),                      // 9
-    mips::j(kBodyJmpPc, kBodyLoopPc),                           // 10
+    mips::j(kBodyLoopPc),                                       // 10
     mips::nop(),                                                // 11  branch delay slot
     mips::nop(),                                                // 12
     mips::nop(),                                                // 13
@@ -201,7 +201,7 @@ bool perturbedProgramsAreRejected() {
     return false;
   }
   wrong = kSpinBody;
-  wrong[10] = mips::j(kBodyJmpPc, kModeFunction2); // retargeted to the wrong word
+  wrong[10] = mips::j(kModeFunction2); // retargeted to the wrong word
   if (decodeMatches(wrong.data(), kSpinBodyIntended.data(), wrong.size(), at.data())) {
     std::fprintf(stderr, "mode_call_budget_resume: a retargeted jump was ACCEPTED\n");
     return false;
@@ -278,18 +278,17 @@ class BudgetMachine final : public tekken3::frame::Machine {
 public:
   BudgetMachine(Core &core, psx::cpu::ResumableGuestCall &modeCall) : core_(core), modeCall_(modeCall) {}
 
-  void call(std::uint32_t address, std::uint32_t returnPc) override {
+  void call(tekken3::frame::CallSite site) override {
     ++suspendingEntryAbuses;
-    tekken3::execution::FiniteGuestCall::callToReturn(core_, address, "mode_call_budget_resume control");
+    tekken3::execution::FiniteGuestCall::callToReturn(core_, site.entry, "mode_call_budget_resume control");
   }
 
-  void call1(std::uint32_t address, std::uint32_t returnPc, std::uint32_t a0) override {
-    call(address, returnPc);
+  void call1(tekken3::frame::CallSite site, std::uint32_t) override {
+    call(site);
   }
 
-  void
-  call3(std::uint32_t address, std::uint32_t returnPc, std::uint32_t a0, std::uint32_t a1, std::uint32_t a2) override {
-    call(address, returnPc);
+  void call3(tekken3::frame::CallSite site, const std::array<std::uint32_t, 3> &) override {
+    call(site);
   }
 
   static bool settled(const psx::cpu::CallStep &step) {
@@ -300,17 +299,21 @@ public:
     return step.outcome == psx::cpu::CallOutcome::Returned;
   }
 
-  bool beginSpanningCall(std::uint32_t address, std::uint32_t returnPc) override {
+  bool beginSpanningCall(tekken3::frame::CallSite site) override {
     ++boundedStarts;
-    lastEntry = address;
-    lastReturnPc = returnPc;
-    modeCall_.begin(core_, "mode call", address, returnPc, psx::cpu::kUnboundedCallTurns);
+    lastEntry = site.entry;
+    lastReturnPc = site.returnPc;
+    modeCall_.begin(core_, "mode call", site.entry, site.returnPc, psx::cpu::kUnboundedCallTurns);
     return settled(modeCall_.advance(std::nullopt, psx::cpu::ExecutionBudget::fromCycles(kFieldCycles)));
   }
 
   bool resumeSpanningCall() override {
     ++boundedResumes;
     return settled(modeCall_.advance(std::nullopt, psx::cpu::ExecutionBudget::fromCycles(kFieldCycles)));
+  }
+
+  bool spanningCallPending() const override {
+    return modeCall_.pending();
   }
 
   void deliverEvent(std::uint32_t, std::uint32_t) override {
@@ -347,6 +350,10 @@ public:
 
   void write8(std::uint32_t address, std::uint8_t value) override {
     core_.mem_w8(address, value);
+  }
+
+  void write16(std::uint32_t address, std::uint16_t value) override {
+    core_.mem_w16(address, value);
   }
 
   void write32(std::uint32_t address, std::uint32_t value) override {
@@ -416,7 +423,8 @@ bool misScheduledBodyStoresNothing() {
   wrong[8] = mips::nop();
   wrong[9] = mips::sw(mips::kT1, mips::kT3, 0x698);
   {
-    auto game = std::make_unique<Game>();
+    psx::test::StubGameRuntime runtime;
+    auto game = std::make_unique<Game>(runtime, psx::config::Config{});
     Core &core = game->core;
     if (!loadFixture(core)) {
       return false;
@@ -467,7 +475,8 @@ bool misScheduledBodyStoresNothing() {
 
 // Positive control on the read path: a host write at the counter address must be visible.
 bool hostWriteToTheSameAddressIsVisible() {
-  auto game = std::make_unique<Game>();
+  psx::test::StubGameRuntime runtime;
+  auto game = std::make_unique<Game>(runtime, psx::config::Config{});
   Core &core = game->core;
   if (!loadFixture(core)) {
     return false;
@@ -492,7 +501,8 @@ bool hostWriteToTheSameAddressIsVisible() {
 }
 
 bool resumeArm() {
-  auto game = std::make_unique<Game>();
+  psx::test::StubGameRuntime runtime;
+  auto game = std::make_unique<Game>(runtime, psx::config::Config{});
   Core &core = game->core;
   if (!loadFixture(core)) {
     return false;
@@ -597,7 +607,8 @@ bool resumeArm() {
 }
 
 bool controlArmAborts() {
-  auto game = std::make_unique<Game>();
+  psx::test::StubGameRuntime runtime;
+  auto game = std::make_unique<Game>(runtime, psx::config::Config{});
   Core &core = game->core;
   if (!loadFixture(core)) {
     return false;

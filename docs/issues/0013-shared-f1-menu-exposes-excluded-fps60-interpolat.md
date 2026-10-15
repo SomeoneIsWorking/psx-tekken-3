@@ -24,13 +24,12 @@ Repository audit confirms Tekken owns no fps60 producer, interpolation/lerp, or 
 
 ## Resolution
 
-The consumer now declares `temporalInterpolation=false` through the shared
-`widescreenOnly()` profile. Shared configuration and menu-row owners consult that same capability,
-while legacy interpolation consumers retain their explicit support.
+`tekken3::Runtime::interpolates()` is false (the `GameRuntime` default), and shared configuration and
+menu-row owners consult it; `tekken3_platform_bindings_contract` checks it.
 
 The exact Clang build against recorded psxport `99a42aa3` passes CTest 11/11, full `verify`, and the
-13/13 capability seam, including `temporalInterpolation=false` and a one-entry player render-path
-cycle.
+13/13 capability seam of the time (since replaced by `tekken3_platform_bindings_contract`) and a one-entry
+player render-path cycle.
 
 Pending: issue 0012's bounded real-window inspection produced no X11 window or first present before
 the product reached its current IRQ/CD-init frontier. Therefore the absence of the 60fps

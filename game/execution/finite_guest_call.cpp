@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <limits>
 #include <optional>
+#include <span>
 
 namespace tekken3::execution {
 namespace {
@@ -28,7 +29,8 @@ struct LzExtent {
 };
 
 // Counts the LZ stream's output without writing guest memory; a zero control byte terminates it.
-LzExtent scanLzExtent(const std::uint8_t *source, std::size_t sourceLimit, std::size_t outputLimit) {
+LzExtent scanLzExtent(std::span<const std::uint8_t> source, std::size_t outputLimit) {
+  const std::size_t sourceLimit = source.size();
   std::size_t input = 0;
   std::size_t output = 0;
   while (input < sourceLimit) {
@@ -118,7 +120,7 @@ std::string imageWrapperExtent(Core &core, std::uint32_t source, std::uint32_t o
                           entry);
   }
 
-  auto extent = scanLzExtent(&core.ram[*entryRam], sizeof(core.ram) - *entryRam, outputLimit);
+  auto extent = scanLzExtent(std::span<const std::uint8_t>(core.ram).subspan(*entryRam), outputLimit);
   auto consumed = *cursorRam - *entryRam;
   auto sourceEnd = *entryRam + extent.sourceBytes;
   auto outputFinalEnd = *outputBeginRam + extent.outputBytes;

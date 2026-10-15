@@ -23,6 +23,6 @@ two-register `lui`/`lw` form, so a decoded sweep is the authority for writers an
 **The defect, and its shape:** the owner read `Game::timing.vblank`, whose only incrementer this
 title's finite frame loop never calls, so the clock was frozen at 0, the deadline was always `0xF0`,
 and the signed poll test could never be true. The owner now reads the word the retail leaf itself
-returned and the title declares it as `PlatformHlePlan::vsyncQueryCounterAddress`, so the framework's
-protected VSync handler answers the guest instead of refusing it. `tools/verify_vsync_field_clock.py`
+returned, and the runtime's `StockVSync(0x800859A8, 0x8009AC68)` answers a negative-mode VSync from
+that same word. `tools/verify_vsync_field_clock.py`
 re-derives the address, both writers and the 22-site call census (21 queries, one waiting).

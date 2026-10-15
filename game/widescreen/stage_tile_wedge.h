@@ -22,8 +22,6 @@ public:
   /// 0xFFFFFFFE: the guest's marker for the cell the camera stands in (0x8006DD48).
   static constexpr std::uint32_t kCameraCell = 0xFFFFFFFEu;
 
-  using GuestBody = void (*)(Core *);
-
   /// Selector arguments after the wedge (call sites 0x8006D1EC, 0x8006D274); tileSize is a4 from 16(sp).
   struct Query {
     std::int32_t heading = 0;
@@ -65,7 +63,7 @@ public:
   };
 
   /// Why the selection cannot run: guest invariants and the selector's undefined-input paths.
-  enum class SelectionStatus {
+  enum class SelectionStatus : std::uint8_t {
     ok,
     noTileSize,
     noStepScale,
@@ -79,25 +77,23 @@ public:
     Selection selection;
   };
 
-  void install(Core &core);
-  void publishPlan(const GuestProjectionPlan &plan) const;
-  void selectTiles(Core &core) const;
-  [[nodiscard]] std::int32_t derivedWedge(std::int32_t retailWedge) const;
-  [[nodiscard]] const GuestProjectionPlan &plan() const;
+  void install(Core &core) const;
+  void selectTiles(Core &core, const GuestProjectionPlan &plan) const;
+  // The retail wedge widened for `plan`'s projection.
+  [[nodiscard]] static std::int32_t derivedWedge(std::int32_t retailWedge, const GuestProjectionPlan &plan);
 
   /// Identity for plans that did not widen the projection.
   static std::int32_t widenWedge(std::int32_t retailWedge, int nativeProjectionWidth, int projectionWidth);
-  static std::int32_t directionIndex(std::int32_t heading, std::int32_t halfWedge, bool positive);
+  // Index into the direction tables of the wedge edge on the `positive` side of the query's heading.
+  static std::int32_t directionIndex(const Query &query, std::int32_t halfWedge, bool positive);
   static Ray stepOf(DirectionWord direction, const StageBlock &block);
   static Wedge wedgeFor(std::int32_t wedge, const StageBlock &block, DirectionWord left, DirectionWord right);
   static Result select(const Query &query, const StageBlock &block, const Wedge &wedge);
 
 private:
   static void selectTilesOverride(Core *core);
+  static void originalSelector(Core *core);
   static DirectionWord guestDirection(Core &core, std::int32_t index);
-
-  GuestBody retailSelector_ = nullptr;
-  mutable GuestProjectionPlan plan_;
 };
 
 } // namespace tekken3::widescreen

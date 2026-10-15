@@ -1,27 +1,29 @@
-// Title-owned field turn: boot prefix, frame barrier, display init, per-field step and the driver.
+// The guest's main-loop bodies the title replaces: boot prefix, frame barrier, display init and the field step.
 #pragma once
 
-#include "game_runtime.h"
-#include "resumable_guest_call.h"
-
+#include <array>
 #include <cstdint>
 
-class Game;
-
 namespace tekken3::frame {
+
+// A jal site: the callee and the return address the jal sets.
+struct CallSite {
+  std::uint32_t entry = 0;
+  std::uint32_t returnPc = 0;
+};
 
 // Machine boundary shared by the Core adapter and the sequence tests.
 class Machine {
 public:
   virtual ~Machine() = default;
 
-  virtual void call(std::uint32_t address, std::uint32_t returnPc) = 0;
-  virtual void call1(std::uint32_t address, std::uint32_t returnPc, std::uint32_t a0) = 0;
-  virtual void
-  call3(std::uint32_t address, std::uint32_t returnPc, std::uint32_t a0, std::uint32_t a1, std::uint32_t a2) = 0;
+  virtual void call(CallSite site) = 0;
+  virtual void call1(CallSite site, std::uint32_t a0) = 0;
+  virtual void call3(CallSite site, const std::array<std::uint32_t, 3> &arguments) = 0;
   // A guest call that may outlive the field it starts on; both return true once it has returned.
-  virtual bool beginSpanningCall(std::uint32_t address, std::uint32_t returnPc) = 0;
+  virtual bool beginSpanningCall(CallSite site) = 0;
   virtual bool resumeSpanningCall() = 0;
+  virtual bool spanningCallPending() const = 0;
   virtual void deliverEvent(std::uint32_t eventClass, std::uint32_t spec) = 0;
   virtual std::uint32_t returnValue() const = 0;
   virtual std::uint32_t readRegister(std::uint32_t index) const = 0;
@@ -32,6 +34,7 @@ public:
   virtual std::uint16_t read16(std::uint32_t address) const = 0;
   virtual std::uint32_t read32(std::uint32_t address) const = 0;
   virtual void write8(std::uint32_t address, std::uint8_t value) = 0;
+  virtual void write16(std::uint32_t address, std::uint16_t value) = 0;
   virtual void write32(std::uint32_t address, std::uint32_t value) = 0;
 
   virtual void commitPresentation() = 0;
@@ -59,6 +62,9 @@ public:
   static constexpr std::uint32_t kMain = 0x80028BA0u;
   static constexpr std::uint32_t kFrameBarrier = 0x800296C4u;
   static constexpr std::uint32_t kDisplayInit = 0x800B0954u;
+  // The RCntCNT2 event 0x80029894 registers as EvMdINTR.
+  static constexpr std::uint32_t kFrameTimerEventClass = 0xF2000002u;
+  static constexpr std::uint32_t kFrameTimerEventSpec = 0x00000002u;
 
   // The non-returning 0x80028BA0 prologue; the initializers it calls run from `step`.
   static void runBootPrefix(Machine &machine);
@@ -68,27 +74,6 @@ public:
 
 private:
   static void stepBoot(Machine &machine, StepState &state);
-};
-
-class FrameDriver final : public ::FrameDriver {
-public:
-  explicit FrameDriver(Game &game);
-
-  void installOverrides();
-  void runBootPrefix(Core &core, std::uint32_t programEntry);
-  void stepFrame(Core &core, std::uint32_t frame) override;
-
-private:
-  static FrameDriver &from(Core &core);
-  static void mainOverride(Core *core);
-  static void barrierOverride(Core *core);
-  static void displayInitOverride(Core *core);
-
-  Game &game_;
-  StepState stepState_;
-  psx::cpu::ResumableGuestCall spanningCall_;
-  bool bootStarted_ = false;
-  bool bootComplete_ = false;
 };
 
 } // namespace tekken3::frame

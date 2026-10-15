@@ -47,23 +47,20 @@ public:
     core_.mem_w32(address, value);
   }
 
-  std::uint32_t setCriticalSection(std::uint32_t enabled, std::uint32_t returnPc) override {
-    core_.r[kA0] = enabled;
-    core_.r[kRa] = returnPc;
+  std::uint32_t setCriticalSection(CriticalSectionCall call) override {
+    core_.r[kA0] = call.enabled;
+    core_.r[kRa] = call.returnPc;
     execution::FiniteGuestCall::callToReturn(core_, kCriticalSection, "Tekken3 GPU critical-section guest call");
     return core_.r[kV0];
   }
 
-  void reportTimeout(std::uint32_t queueDepth,
-                     std::uint32_t gpuData,
-                     std::uint32_t gpuControl,
-                     std::uint32_t dmaControl) override {
+  void reportTimeout(const TimeoutReport &report) override {
     lucent::error("gpu-sync",
                   "Tekken 3 GPU queue timeout: depth={} GP0=0x{:08X} GP1=0x{:08X} DMA=0x{:08X}",
-                  queueDepth,
-                  gpuData,
-                  gpuControl,
-                  dmaControl);
+                  report.queueDepth,
+                  report.gpuData,
+                  report.gpuControl,
+                  report.dmaControl);
   }
 
 private:
@@ -79,7 +76,7 @@ std::uint32_t dereference(QueueMachine &machine, std::uint32_t pointerAddress) {
 }
 
 void resetGpuQueue(QueueMachine &machine) {
-  const std::uint32_t priorCritical = machine.setCriticalSection(0, 0x8007E9D0u);
+  const std::uint32_t priorCritical = machine.setCriticalSection({0, 0x8007E9D0u});
   machine.write32(kQueueTail, 0);
   machine.write32(kSavedCriticalSection, priorCritical);
   machine.write32(kQueueHead, 0);
@@ -89,7 +86,7 @@ void resetGpuQueue(QueueMachine &machine) {
   machine.write32(dmaChannel, machine.read32(dmaChannel) | 0x800u);
   machine.write32(machine.read32(kGpuDataPointer), 0x02000000u);
   machine.write32(machine.read32(kGpuDataPointer), 0x01000000u);
-  machine.setCriticalSection(priorCritical, 0x8007EA4Cu);
+  machine.setCriticalSection({priorCritical, 0x8007EA4Cu});
 }
 
 void gpuTimeoutArmOverride(Core *core) {
@@ -125,10 +122,12 @@ std::int32_t pollQueue(QueueMachine &machine) {
     return 0;
   }
 
-  machine.reportTimeout((machine.read32(kQueueHead) - machine.read32(kQueueTail)) & 63u,
-                        dereference(machine, kGpuDataPointer),
-                        dereference(machine, kGpuControlPointer),
-                        dereference(machine, kDmaControlPointer));
+  machine.reportTimeout({
+      .queueDepth = (machine.read32(kQueueHead) - machine.read32(kQueueTail)) & 63u,
+      .gpuData = dereference(machine, kGpuDataPointer),
+      .gpuControl = dereference(machine, kGpuControlPointer),
+      .dmaControl = dereference(machine, kDmaControlPointer),
+  });
   resetGpuQueue(machine);
   return -1;
 }

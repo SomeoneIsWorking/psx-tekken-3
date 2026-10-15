@@ -9,7 +9,7 @@
 
 namespace tekken3::test::mips {
 
-enum : std::uint32_t {
+enum : std::uint8_t {
   kZero = 0,
   kV0 = 2,
   kAt = 1,
@@ -25,7 +25,6 @@ enum : std::uint32_t {
 
 constexpr std::uint32_t kOpSpecial = 0x00;
 constexpr std::uint32_t kOpJ = 0x02;
-constexpr std::uint32_t kOpJal = 0x03;
 constexpr std::uint32_t kOpBeq = 0x04;
 constexpr std::uint32_t kOpBne = 0x05;
 constexpr std::uint32_t kOpAddiu = 0x09;
@@ -119,15 +118,9 @@ constexpr std::uint32_t bne(std::uint32_t rs, std::uint32_t rt, std::uint32_t pc
   return encode(kOpBne, rs, rt, branchOffset(pc, target));
 }
 
-// `j`/`jal` fields are absolute word indexes; the top nibble comes from the PC's region.
-constexpr std::uint32_t j(std::uint32_t pc, std::uint32_t target) {
-  (void)pc;
+// The `j` field is an absolute word index; the top nibble comes from the PC's region.
+constexpr std::uint32_t j(std::uint32_t target) {
   return (kOpJ << 26) | ((target >> 2) & 0x03FFFFFFu);
-}
-
-constexpr std::uint32_t jal(std::uint32_t pc, std::uint32_t target) {
-  (void)pc;
-  return (kOpJal << 26) | ((target >> 2) & 0x03FFFFFFu);
 }
 
 constexpr std::uint32_t jr(std::uint32_t rs) {
@@ -162,8 +155,7 @@ inline std::uint32_t branchTarget(std::uint32_t word, std::uint32_t pc) {
 }
 
 inline std::uint32_t jumpTarget(std::uint32_t word, std::uint32_t pc) {
-  const std::uint32_t index = word & 0x03FFFFFFu;
-  return ((pc + 4u) & 0xF0000000u) | (index << 2);
+  return ((pc + 4u) & 0xF0000000u) | ((word & 0x03FFFFFFu) << 2);
 }
 
 } // namespace tekken3::test::mips

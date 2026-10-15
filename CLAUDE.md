@@ -39,14 +39,13 @@ non-temporal guest-widescreen contract. Do not add a title-owned native renderer
 reconstruct pictures from GTE/OT/GP0 diagnostic output. Establish a faithful, measurable base before
 the widescreen enhancement.
 
-Host ownership follows this project's codemap: `game/program/title_runtime.*` is the one
-process-lifetime game owner, `game/frame/finite_frame.*` owns the finite title frame and its measured
-service order, and `game/entry/tekken3_catalog.*` hands the title to the framework main, whose
-`ProductHost` and `TitleSession` own the command line, boot and field loop. `game/` is the only first-party include root.
-Probe entry points only parse their inputs, install the same owner, and drive a separate test target. The runtime derives directly from
-`GameRuntime` and owns the measured resident-text range through immutable `GuestProgramImage`;
-Tekken source must not include or instantiate `LegacyGameRuntimeAdapter`, `GameConfig`, or
-`GameHooks`.
+Host ownership follows this project's codemap: `game/runtime/runtime.*` (`tekken3::Runtime`, a
+`GameRuntime`) is the one process-lifetime game owner and `game/runtime/session.*` holds per-Core state,
+`game/frame/` owns the finite title frame, its measured service order and the `warp` debug route, and
+`game/product/catalog.*` hands the title to the framework main, whose `ProductHost` and `TitleSession`
+own the command line, boot and field loop. `game/` is the only first-party include root. Title
+behaviour is a `Runtime` virtual or a stock psxport class bound in `registerOverrides`, never a config
+bag; Tekken source must not include `LegacyGameRuntimeAdapter`, `GameConfig` or `GameHooks`.
 
 `external/psxport` is a relative symlink to the workspace's live framework checkout when one exists, or
 a clone of its main where there is none. `tools/psxport_fetch.py --auto` establishes whichever applies;

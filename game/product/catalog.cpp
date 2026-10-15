@@ -1,7 +1,7 @@
-#include "entry/tekken3_catalog.h"
+#include "product/catalog.h"
 
 #include "executable_identity.h"
-#include "program/title_runtime.h"
+#include "runtime/runtime.h"
 #include "single_title_catalog.h"
 
 namespace tekken3 {
@@ -23,15 +23,10 @@ constexpr psx::host::TitleIdentity kTitleIdentity{
     .discExecutablePath = identity::kDiscExecutablePath,
 };
 
-// The resident program is the header's text extent, in physical addresses.
-constexpr std::uint32_t kResidentPhysicalLo = identity::kTextAddress & 0x1FFFFFFFu;
-constexpr ResidentProgramRange kResidentProgram{kResidentPhysicalLo, kResidentPhysicalLo + identity::kTextBytes};
-
 } // namespace
 
 std::unique_ptr<psx::host::TitleCatalog> createCatalog() {
-  return std::make_unique<psx::host::SingleTitleCatalog>(
-      kTitleIdentity, "scratch/bin", std::make_unique<TitleRuntime>(kResidentProgram, identity::kEntry));
+  return std::make_unique<psx::host::SingleTitleCatalog>(kTitleIdentity, "scratch/bin", std::make_unique<Runtime>());
 }
 
 } // namespace tekken3

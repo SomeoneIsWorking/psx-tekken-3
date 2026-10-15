@@ -5,6 +5,7 @@
 #include "gpu_vk.h"
 #include "mods.h"
 #include "native_dispatch.h"
+#include "runtime/session.h"
 
 #include <array>
 #include <cstdint>
@@ -54,14 +55,26 @@ std::uint32_t scratchVertex(Core &core, std::uint32_t indices, std::uint32_t ind
   return core.mem_r32(kScratch + vertexIndex * 4u);
 }
 
-template <std::size_t Count> bool visible(const std::array<std::uint32_t, Count> &vertices, int right) {
+// The guest columns the presented canvas shows; on Record the canvas adds margins beside the retail draw width.
+struct CanvasColumns {
+  int left = 0;
+  int right = 0;
+};
+
+CanvasColumns canvasColumns(const GuestProjectionPlan &plan) {
+  const int margin = (plan.presentationExtent.width - plan.guestDrawWidth) / 2;
+  return {-margin, plan.guestDrawWidth + margin};
+}
+
+template <std::size_t Count>
+bool visible(const std::array<std::uint32_t, Count> &vertices, const CanvasColumns &columns) {
   bool everyAbove = true;
   bool everyLeft = true;
   bool anyInsideRight = false;
   for (const std::uint32_t vertex : vertices) {
     everyAbove = everyAbove && y(vertex) < 0;
-    everyLeft = everyLeft && x(vertex) < 0;
-    anyInsideRight = anyInsideRight || x(vertex) < right;
+    everyLeft = everyLeft && x(vertex) < columns.left;
+    anyInsideRight = anyInsideRight || x(vertex) < columns.right;
   }
   return !everyAbove && !everyLeft && anyInsideRight;
 }
@@ -78,34 +91,25 @@ void linkPacket(Core &core, std::uint32_t packet, std::uint32_t orderingTable, s
 } // namespace
 
 const WidescreenProjection &policyFrom(Core *core, const char *owner) {
-  if (!core || !core->runtime) {
-    lucent::error("wide", "Tekken 3 {} override ran without its title runtime", owner);
-    std::abort();
-  }
-  const auto *const policy = dynamic_cast<const WidescreenProjection *>(core->runtime->guestWidescreenProjection());
-  if (!policy) {
+  const auto *const policy = dynamic_cast<const WidescreenProjection *>(core->runtime.guestWidescreenProjection());
+  if (policy == nullptr) {
     lucent::error("wide", "Tekken 3 {} override reached another title's policy", owner);
     std::abort();
   }
   return *policy;
 }
 
-WidescreenProjection::WidescreenProjection() : WidescreenProjection(gpu_vk_latch_guest_projection) {}
-
-WidescreenProjection::WidescreenProjection(ProjectionLatch latch) : latch_(latch) {
-  if (!latch_) {
-    lucent::error("wide", "Tekken 3 projection owner requires the shared plan latch");
-    std::abort();
-  }
-}
+WidescreenProjection::WidescreenProjection()
+    : latch_(gpu_vk_latch_guest_projection), retailDimensions_(originalViewDimensions),
+      retailStageClip_(originalStageClip), retailEffectClip_(originalEffectClip) {}
 
 WidescreenProjection::WidescreenProjection(ProjectionLatch latch, GuestBody retailDimensions)
-    : WidescreenProjection(latch) {
-  if (!retailDimensions) {
-    lucent::error("wide", "Tekken 3 projection owner requires the retail dimension body");
+    : latch_(latch), retailDimensions_(retailDimensions), retailStageClip_(originalStageClip),
+      retailEffectClip_(originalEffectClip) {
+  if (latch_ == nullptr || retailDimensions_ == nullptr) {
+    lucent::error("wide", "Tekken 3 projection owner requires the plan latch and the retail dimension body");
     std::abort();
   }
-  retailDimensions_ = retailDimensions;
 }
 
 GuestProjectionGeometry WidescreenProjection::measuredGeometry(std::uint32_t viewWidth, std::uint32_t viewHeight) {
@@ -125,10 +129,7 @@ GuestProjectionGeometry WidescreenProjection::measuredGeometry(std::uint32_t vie
   return {{static_cast<int>(viewWidth), static_cast<int>(viewHeight)}, static_cast<int>(viewWidth)};
 }
 
-void WidescreenProjection::install(Core &core) {
-  retailDimensions_ = originalViewDimensions;
-  retailStageClip_ = originalStageClip;
-  retailEffectClip_ = originalEffectClip;
+void WidescreenProjection::install(Core &core) const {
   psx::cpu::installNativeOverride(core, kViewDimensions, "Tekken3::viewDimensions", publishDimensionsOverride);
   psx::cpu::installNativeOverride(core, kStageClip, "Tekken3::stageClip", stageClipOverride);
   psx::cpu::installNativeOverride(core, kEffectClip, "Tekken3::effectClip", effectClipOverride);
@@ -139,39 +140,29 @@ const StageTileWedge &WidescreenProjection::stageWedge() const {
   return stageWedge_;
 }
 
-void WidescreenProjection::publishDimensions(Core &core) const {
-  if (!retailDimensions_) {
-    lucent::error("wide", "Tekken 3 view dimensions ran before the widescreen owner was installed");
-    std::abort();
-  }
-
+void WidescreenProjection::publishDimensions(Core &core, GuestProjectionPlan &plan) const {
   const GuestProjectionGeometry native = measuredGeometry(core.r[4], core.r[5]);
-  plan_ = latch_(&core, native);
-  if (!plan_.projectionExtent.width || plan_.projectionExtent.width > std::numeric_limits<std::uint16_t>::max()) {
-    lucent::error("wide", "Tekken 3 received invalid projected width {}", plan_.projectionExtent.width);
+  plan = latch_(&core, native);
+  if (plan.projectionExtent.width == 0 || plan.projectionExtent.width > std::numeric_limits<std::uint16_t>::max()) {
+    lucent::error("wide", "Tekken 3 received invalid projected width {}", plan.projectionExtent.width);
     std::abort();
   }
-  stageWedge_.publishPlan(plan_);
 
   lucent::info("wide",
                "Tekken 3 view {}x{} / draw {} -> view {}x{} / draw {}",
                native.extent.width,
                native.extent.height,
                native.drawWidth,
-               plan_.projectionExtent.width,
-               plan_.projectionExtent.height,
-               plan_.guestDrawWidth);
-  core.r[4] = static_cast<std::uint32_t>(plan_.projectionExtent.width);
-  core.r[5] = static_cast<std::uint32_t>(plan_.projectionExtent.height);
+               plan.projectionExtent.width,
+               plan.projectionExtent.height,
+               plan.guestDrawWidth);
+  core.r[4] = static_cast<std::uint32_t>(plan.projectionExtent.width);
+  core.r[5] = static_cast<std::uint32_t>(plan.projectionExtent.height);
   retailDimensions_(&core);
 }
 
-void WidescreenProjection::clipStagePrimitives(Core &core) const {
-  if (!plan_.widescreen()) {
-    if (!retailStageClip_) {
-      lucent::error("wide", "Tekken 3 stage clip ran before its retail super was installed");
-      std::abort();
-    }
+void WidescreenProjection::clipStagePrimitives(Core &core, const GuestProjectionPlan &plan) const {
+  if (!plan.widescreen()) {
     retailStageClip_(&core);
     return;
   }
@@ -183,6 +174,7 @@ void WidescreenProjection::clipStagePrimitives(Core &core) const {
   std::int32_t inputRemaining = static_cast<std::int32_t>(core.mem_r32(state));
   std::int32_t capacityRemaining = static_cast<std::int32_t>(core.mem_r32(state + 4u));
   std::uint32_t producedBytes = 0;
+  const CanvasColumns columns = canvasColumns(plan);
 
   while (inputRemaining > 0 && capacityRemaining > 0) {
     const std::uint32_t opcode = core.mem_r32(command) & 0xFF000000u;
@@ -196,7 +188,7 @@ void WidescreenProjection::clipStagePrimitives(Core &core) const {
         vertices[index] = scratchVertex(core, indices, index);
       }
       commandWords = 5;
-      if (visible(vertices, plan_.guestDrawWidth)) {
+      if (visible(vertices, columns)) {
         packetWords = 10;
         linkPacket(core, packet, orderingTable, 9);
         writePacketWord(core, packet, 1, core.mem_r32(command));
@@ -216,7 +208,7 @@ void WidescreenProjection::clipStagePrimitives(Core &core) const {
       }
       commandWords = 5;
       const std::array<std::uint32_t, 3> triangle{vertices[0], vertices[1], vertices[2]};
-      if (visible(triangle, plan_.guestDrawWidth)) {
+      if (visible(triangle, columns)) {
         packetWords = 8;
         linkPacket(core, packet, orderingTable, 7);
         writePacketWord(core, packet, 1, core.mem_r32(command));
@@ -233,7 +225,7 @@ void WidescreenProjection::clipStagePrimitives(Core &core) const {
         vertices[index] = scratchVertex(core, indices, index);
       }
       commandWords = 2;
-      if (visible(vertices, plan_.guestDrawWidth)) {
+      if (visible(vertices, columns)) {
         packetWords = 6;
         linkPacket(core, packet, orderingTable, 5);
         writePacketWord(core, packet, 1, core.mem_r32(command));
@@ -259,12 +251,8 @@ void WidescreenProjection::clipStagePrimitives(Core &core) const {
   core.r[2] = static_cast<std::uint32_t>(capacityRemaining);
 }
 
-void WidescreenProjection::clipEffectPrimitive(Core &core) const {
-  if (!plan_.widescreen()) {
-    if (!retailEffectClip_) {
-      lucent::error("wide", "Tekken 3 effect clip ran before its retail super was installed");
-      std::abort();
-    }
+void WidescreenProjection::clipEffectPrimitive(Core &core, const GuestProjectionPlan &plan) const {
+  if (!plan.widescreen()) {
     retailEffectClip_(&core);
     return;
   }
@@ -283,7 +271,8 @@ void WidescreenProjection::clipEffectPrimitive(Core &core) const {
   if ((core.mem_r32(context + 12u) & 0x2000u) != 0) {
     orderingTableIndex -= 5;
   }
-  if (x(vertices[0]) > plan_.guestDrawWidth || x(vertices[1]) < 0 || y(vertices[0]) > 468 || y(vertices[2]) < 20 ||
+  const CanvasColumns columns = canvasColumns(plan);
+  if (x(vertices[0]) > columns.right || x(vertices[1]) < columns.left || y(vertices[0]) > 468 || y(vertices[2]) < 20 ||
       orderingTableIndex < 0) {
     return;
   }
@@ -297,15 +286,15 @@ void WidescreenProjection::clipEffectPrimitive(Core &core) const {
 }
 
 void WidescreenProjection::publishDimensionsOverride(Core *core) {
-  policyFrom(core, "projection").publishDimensions(*core);
+  policyFrom(core, "projection").publishDimensions(*core, session(*core).projectionPlan);
 }
 
 void WidescreenProjection::stageClipOverride(Core *core) {
-  policyFrom(core, "stage clip").clipStagePrimitives(*core);
+  policyFrom(core, "stage clip").clipStagePrimitives(*core, session(*core).projectionPlan);
 }
 
 void WidescreenProjection::effectClipOverride(Core *core) {
-  policyFrom(core, "effect clip").clipEffectPrimitive(*core);
+  policyFrom(core, "effect clip").clipEffectPrimitive(*core, session(*core).projectionPlan);
 }
 
 } // namespace tekken3::widescreen
