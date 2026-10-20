@@ -131,17 +131,8 @@ FrameDriver::FrameDriver(Game &game, Machine &machine) : game_(game), machine_(m
 
 FrameDriver::~FrameDriver() = default;
 
-FrameDriver &FrameDriver::from(Core &core) {
-  auto *const driver = core.game == nullptr ? nullptr : dynamic_cast<FrameDriver *>(core.game->frameDriver.get());
-  if (driver == nullptr) {
-    lucent::error("frame", "a Tekken 3 owner reached a Core with no Tekken 3 frame driver");
-    std::abort();
-  }
-  return *driver;
-}
-
 void FrameDriver::mainOverride(Core *core) {
-  FrameDriver &driver = from(*core);
+  FrameDriver &driver = core->game->frameDriverAs<FrameDriver>();
   if (!driver.bootStarted_ || driver.bootComplete_) {
     lucent::error("boot", "Tekken 3 finite main reached outside its one boot dispatch");
     std::abort();
@@ -152,7 +143,7 @@ void FrameDriver::mainOverride(Core *core) {
 }
 
 void FrameDriver::barrierOverride(Core *core) {
-  FrameDriver &driver = from(*core);
+  FrameDriver &driver = core->game->frameDriverAs<FrameDriver>();
   if (!FiniteFrame::runBarrier(driver.machine_)) {
     lucent::error("frame",
                   "Tekken 3 RCntCNT2 event class 0x{:08X} spec 0x{:08X} did not release the frame barrier",
@@ -163,7 +154,7 @@ void FrameDriver::barrierOverride(Core *core) {
 }
 
 void FrameDriver::displayInitOverride(Core *core) {
-  FiniteFrame::runDisplayInit(from(*core).machine_);
+  FiniteFrame::runDisplayInit(core->game->frameDriverAs<FrameDriver>().machine_);
 }
 
 void FrameDriver::installOverrides() {
@@ -179,7 +170,8 @@ void FrameDriver::runBootPrefix(Core &core) {
   }
   bootStarted_ = true;
   const std::uint32_t entry = core.pc;
-  const auto result = psx::cpu::dispatchGuest(core, entry, psx::cpu::ExecutionBudget::currentTurn(core));
+  const auto result =
+      psx::cpu::dispatchGuest(core, entry, psx::cpu::ExecutionBudget::currentTurn(core), "tekken3 boot prefix");
   if (result.reason != psx::cpu::ExecutionExitReason::HostService) {
     lucent::error("boot",
                   "Tekken 3 boot exited as {} at 0x{:08X}, expected finite-main host transfer",
@@ -216,8 +208,8 @@ void FrameDriver::stepFrame(Core &core, std::uint32_t frame) {
   FiniteFrame::step(machine_, stepState_);
 }
 
-std::string FrameDriver::armWarp(std::string_view line) {
-  return warp_.arm(line);
+std::string FrameDriver::armWarp(const psx::debug::CommandArgs &args) {
+  return warp_.arm(args);
 }
 
 } // namespace tekken3::frame
