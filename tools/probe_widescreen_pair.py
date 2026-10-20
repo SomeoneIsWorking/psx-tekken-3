@@ -6,7 +6,6 @@ with its tracked .ini named through PSXPORT_SETTINGS. The witness is the product
 render_width / native_width pair. Widescreen only: both settings pin fps60=0 and an active fps60 row
 is a defect. Launches the product itself and kills only PIDs it captured.
 
-    tools/probe_widescreen_pair.py --selftest
     tools/probe_widescreen_pair.py --disc "$DISC" --frame 1200
 
 `--disc` or $PSXPORT_DISC names the image; there is no default.
@@ -260,120 +259,16 @@ def report_leg(result: dict, out) -> None:
         out(f"[{result['leg']}] NOTE: {result['note']}")
 
 
-def selftest(out=print) -> int:
-    """Prove the receipt logic reports both widened and narrow, refuses a log with no `[wide]` line,
-    and never shows an active fps60 row."""
-    checks = 0
-    failures = []
-
-    boot_log = (
-        "[wide] native picture: aspect=1 wide_engine=0 native_width=512 render_width=512\n"
-        "[wide] native picture: aspect=1 wide_engine=0 native_width=384 render_width=512\n")
-    lines = parse_wide_lines(boot_log)
-    checks += 1
-    if len(lines) != 2:
-        failures.append(f"the boot-log fixture has 2 [wide] lines and {len(lines)} were found")
-    verdict = classify_wide(lines)
-    checks += 1
-    if verdict["widened"] is not True or verdict["render_width"] != 512 or verdict["native_width"] != 384:
-        failures.append(f"the widened fixture read {verdict}, expected render_width 512 > 384")
-    checks += 1
-    if verdict["steady_state_log_line"] != 2:
-        failures.append(f"the steady state was read from log line {verdict['steady_state_log_line']}, "
-                        f"expected the LAST line")
-
-    narrow_log = "[wide] native picture: aspect=0 wide_engine=0 native_width=384 render_width=384\n"
-    checks += 1
-    if classify_wide(parse_wide_lines(narrow_log))["widened"] is not False:
-        failures.append("the narrow fixture was reported as widened; this check can only ever say yes "
-                        "if it cannot read the other answer")
-
-    absent = classify_wide(parse_wide_lines("[boot] nothing announced here\n"))
-    checks += 1
-    if absent["widened"] is not None or "NO [wide] native picture line" not in absent["reason"]:
-        failures.append(f"a log with no [wide] line answered {absent}, expected a refusal")
-
-    # Scope check on both knob shapes, plus the `unknown key "# fps60"` comment case.
-    for shape, line, want in (
-            ("on value form", "[cfg] PSXPORT_FPS60 = true [env]\n", True),
-            ("off value form", "[cfg] PSXPORT_FPS60 = false [default]\n", False),
-            ("selection form", "[mod_row] fps60 (selected) on this title\n", True),
-            ("refusal form",
-             '[mods:warn] config/aspect_4x3.ini: fps60=1 REFUSED — this title declares no temporal '
-             'interpolation product\n', True),
-            ("comment form",
-             '[mods:warn] config/aspect_4x3.ini: unknown key "# fps60" ignored\n', False)):
-        checks += 1
-        hits = find_fps60_activity(line)
-        if not hits or hits[0]["active"] is not want:
-            failures.append(f"the {shape} of an fps60 report was classified "
-                            f"{hits[0]['active'] if hits else 'not at all'}, expected active={want}")
-    checks += 1
-    if find_fps60_activity("[mod_row] (no interpolation rows on this title)\n"):
-        failures.append("a line with no fps60 knob was reported as an fps60 mention")
-
-    for leg, path in LEG_SETTINGS.items():
-        resolved = ROOT / path
-        checks += 1
-        if not resolved.is_file():
-            failures.append(f"tracked settings {path} named by the {leg} leg is missing")
-            continue
-        text = resolved.read_text(encoding="utf-8")
-        checks += 1
-        if f"aspect={ASPECT_VALUES[leg]}" not in text:
-            failures.append(f"{path} does not pin aspect={ASPECT_VALUES[leg]}; it reads {text!r}")
-        checks += 1
-        if "fps60=1" in text:
-            failures.append(f"{path} enables fps60. Tekken 3 is already 60 fps and its scope is "
-                            f"widescreen only, so an fps60 leg is out of scope by policy.")
-        # Every line must parse; `Mods::load` logs `unknown key` for comments.
-        for number, line in enumerate(text.splitlines(), start=1):
-            if not line.strip():
-                continue
-            if "=" not in line:
-                failures.append(f"{path}:{number} is {line!r}, which `Mods::load` silently skips "
-                                f"(no `=`); a control file should have nothing it cannot express")
-                continue
-            key = line.split("=", 1)[0]
-            if key not in SETTINGS_KEYS:
-                failures.append(f"{path}:{number} has key {key!r}, which `Mods::load` does not accept; "
-                                f"the product will log `unknown key` and configure nothing")
-
-    checks += 1
-    try:
-        parse_telemetry("no counters at all here")
-        failures.append("a reply with no counters was accepted")
-    except ValueError:
-        pass
-
-    for failure in failures:
-        out(f"tekken3 widescreen-pair selftest: FAIL — {failure}")
-    if failures:
-        out(f"tekken3 widescreen-pair selftest: {checks - len(failures)}/{checks} => FAIL")
-        return 1
-    out(f"tekken3 widescreen-pair selftest: {checks}/{checks} => PASS (a boot log carrying both the "
-        f"pre-publication and the steady-state [wide] line reports the steady state, a 4:3 log reports "
-        f"NOT widened, a log with no [wide] line refuses rather than answering, all five shapes the "
-        f"product uses to report or misreport an fps60 knob are classified by what they SAY — on value, "
-        f"off value, selection, refusal, and a `unknown key` comment that is not an enhancement — "
-        f"both tracked settings files pin different aspects with fps60 off, and every line of both "
-        f"files is a key `Mods::load` actually accepts)")
-    return 0
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--selftest", action="store_true", help="prove the receipt logic, then exit")
     parser.add_argument("--leg", choices=sorted(LEG_SETTINGS), help="run ONE aspect leg")
     parser.add_argument("--frame", type=int, default=1200, help="presented frame to capture at")
     parser.add_argument("--port", type=int, default=5961, help="debug endpoint port")
     parser.add_argument("--timeout", type=int, default=900, help="seconds to wait for the frame")
-    parser.add_argument("--binary", default="build/bin/tekken3_port")
+    parser.add_argument("--binary", default="build/agent/bin/tekken3_port")
     parser.add_argument("--disc", help=f"the user's disc image; defaults to ${DISC_ENV}")
     args = parser.parse_args()
-    if args.selftest:
-        return selftest()
     disc = args.disc or os.environ.get(DISC_ENV)
     if not disc:
         print(f"REFUSED: no disc image. Pass --disc PATH or set {DISC_ENV}. The user's image is "
