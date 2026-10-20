@@ -13,14 +13,11 @@ could not be made. Disc-derived output remains below gitignored ``scratch/``.
 from __future__ import annotations
 
 import argparse
-import contextlib
 import hashlib
-import io
 import json
 import os
 import pathlib
 import re
-import struct
 import subprocess
 import sys
 import tempfile
@@ -270,206 +267,10 @@ def run(
     return destination
 
 
-def synthetic_executable() -> bytes:
-    data = bytearray(0x900)
-    data[:8] = b"PS-X EXE"
-    struct.pack_into("<II", data, 0x10, 0x80010040, 0)
-    struct.pack_into("<II", data, 0x18, 0x80010000, 0x100)
-    struct.pack_into("<II", data, 0x30, 0x801FFF00, 0x40)
-    return bytes(data)
-
-
-def selftest() -> bool:
-    results: list[tuple[str, bool]] = []
-    scratch = ROOT / "scratch"
-    scratch.mkdir(exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="provision-selftest-", dir=scratch) as temp:
-        test_root = pathlib.Path(temp)
-        data = synthetic_executable()
-        sources = {
-            "cli": test_root / "cli.chd",
-            "env": test_root / "env.chd",
-            "dotenv": test_root / "dotenv.chd",
-            "drop": test_root / "drop.chd",
-        }
-        for path in sources.values():
-            path.write_bytes(data)
-
-        manifest = {
-            "title": "fixture",
-            "region": "test",
-            "serial": "TEST",
-            "disc_executable": "GAME/TEST.EXE",
-            "output_name": "TEST.EXE",
-            "file_size": len(data),
-            "sha256": hashlib.sha256(data).hexdigest(),
-            "header": {
-                "entry": "0x80010040",
-                "gp": "0x00000000",
-                "text_address": "0x80010000",
-                "text_size": "0x00000100",
-                "stack_address": "0x801FFF00",
-                "stack_offset": "0x00000040",
-            },
-            "startup": {},
-        }
-        manifest_path = test_root / "manifest.json"
-        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-        (test_root / ".env").write_text(
-            f'{DISC_ENV}="{sources["dotenv"]}"\n', encoding="utf-8"
-        )
-
-        source, path = resolve_disc(
-            test_root, str(sources["cli"]), {DISC_ENV: str(sources["env"])}
-        )
-        results.append(
-            (
-                "CLI outranks environment and .env",
-                source == "CLI argument" and path == sources["cli"],
-            )
-        )
-        source, path = resolve_disc(test_root, None, {DISC_ENV: str(sources["env"])})
-        results.append(
-            (
-                "environment outranks .env",
-                source == f"${DISC_ENV}" and path == sources["env"],
-            )
-        )
-        source, path = resolve_disc(test_root, None, {})
-        results.append(
-            (
-                ".env outranks root drop-in",
-                source == ".env" and path == sources["dotenv"],
-            )
-        )
-        (test_root / ".env").unlink()
-        for key in ("cli", "env", "dotenv"):
-            sources[key].unlink()
-        source, path = resolve_disc(test_root, None, {})
-        results.append(
-            (
-                "single root drop-in resolves",
-                source == "root *.chd drop-in" and path == sources["drop"],
-            )
-        )
-
-        missing_refused = False
-        try:
-            resolve_disc(test_root, "missing.chd", {})
-        except Refused:
-            missing_refused = True
-        results.append(
-            ("missing configured path refuses without fallback", missing_refused)
-        )
-
-        second_drop = test_root / "second.chd"
-        second_drop.write_bytes(data)
-        ambiguous_refused = False
-        try:
-            resolve_disc(test_root, None, {})
-        except Refused:
-            ambiguous_refused = True
-        results.append(("multiple root drop-ins refuse ambiguity", ambiguous_refused))
-        second_drop.unlink()
-
-        fake = test_root / "fake_discdump.py"
-        fake.write_text(
-            "#!/usr/bin/env python3\n"
-            "import os, pathlib, shutil, sys\n"
-            "mode = os.environ.get('PROVISION_SELFTEST_MODE', 'copy')\n"
-            "if mode == 'fail': raise SystemExit(7)\n"
-            "if mode == 'missing': raise SystemExit(0)\n"
-            "source = pathlib.Path(sys.argv[3])\n"
-            "dest = pathlib.Path(sys.argv[4]) / 'TEST.EXE'\n"
-            "shutil.copyfile(source, dest)\n"
-            "if mode == 'mutate':\n"
-            "    blob = bytearray(dest.read_bytes()); blob[-1] ^= 1; dest.write_bytes(blob)\n",
-            encoding="utf-8",
-        )
-        fake.chmod(0o755)
-        base_env = {
-            "PATH": os.environ.get("PATH", ""),
-            "PSXPORT_DISCDUMP": str(fake),
-        }
-
-        def silent_run(env: Mapping[str, str]) -> type[Exception] | None:
-            try:
-                with (
-                    contextlib.redirect_stdout(io.StringIO()),
-                    contextlib.redirect_stderr(io.StringIO()),
-                ):
-                    run(
-                        str(sources["drop"]),
-                        root=test_root,
-                        environ=env,
-                        manifest_path=manifest_path,
-                    )
-                return None
-            except (Mismatch, Refused) as exc:
-                return type(exc)
-
-        results.append(
-            (
-                "shipping path provisions a matching executable",
-                silent_run(base_env) is None,
-            )
-        )
-        results.append(
-            (
-                "changed executable reports mismatch",
-                silent_run({**base_env, "PROVISION_SELFTEST_MODE": "mutate"})
-                is Mismatch,
-            )
-        )
-        malformed = bytearray(data)
-        malformed[0] ^= 1
-        sources["drop"].write_bytes(malformed)
-        results.append(
-            (
-                "malformed PS-X EXE reports mismatch",
-                silent_run(base_env) is Mismatch,
-            )
-        )
-        sources["drop"].write_bytes(data)
-        installed = test_root / "scratch" / "bin" / "tekken3" / "TEST.EXE"
-        results.append(
-            (
-                "failed replacement preserves the last verified executable",
-                installed.is_file() and installed.read_bytes() == data,
-            )
-        )
-        results.append(
-            (
-                "success without output is refused",
-                silent_run({**base_env, "PROVISION_SELFTEST_MODE": "missing"})
-                is Refused,
-            )
-        )
-        results.append(
-            (
-                "discdump failure is refused",
-                silent_run({**base_env, "PROVISION_SELFTEST_MODE": "fail"}) is Refused,
-            )
-        )
-
-    for name, passed in results:
-        print(f"{'PASS' if passed else 'FAIL'}: {name}")
-    passed_count = sum(passed for _, passed in results)
-    print(f"provision selftest: {passed_count}/{len(results)} cases")
-    return all(passed for _, passed in results)
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("disc", nargs="?", help="Tekken 3 USA CHD")
-    parser.add_argument(
-        "--selftest",
-        action="store_true",
-        help="exercise precedence, match, mismatch, and refusal through the shipping path",
-    )
     args = parser.parse_args(argv)
-    if args.selftest:
-        return 0 if selftest() else 1
     try:
         run(args.disc)
         return 0

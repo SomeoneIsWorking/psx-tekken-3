@@ -39,7 +39,7 @@ psxport's Lightrec executor.
 | `widescreen::WidescreenProjection` | `game/widescreen/widescreen.*` | `FUN_80080A40` gets the widened view; the stage and effect clippers cull at the canvas |
 | `widescreen::StageTileWedge` | `game/widescreen/stage_tile_wedge.*` | `FUN_8006D95C`'s 6x6 stage-tile selection for a wedge widened in the tangent domain |
 | `field::kEntry`, `kCounter`, `readCounter` | `game/fieldclock/field_clock.*` | libetc VSync and the field count a negative mode returns |
-| tools | `tools/` | Launcher and the `external/psxport` fetch (`run.py`), provisioning, RE probes |
+| tools | `bootstrap.py`, `tools/` | The `external/psxport` fetch (`bootstrap.py`), launcher, provisioning, RE probes |
 
 ## The frame turn
 
