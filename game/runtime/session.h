@@ -13,7 +13,7 @@ public:
   Session() = default;
 
   // The plan the guest's last view-dimension call latched; the clippers and the tile wedge read it.
-  GuestProjectionPlan projectionPlan;
+  psx::present::GuestProjectionPlan projectionPlan;
 };
 
 // The session of the Game `core` belongs to; aborts when it has none.
