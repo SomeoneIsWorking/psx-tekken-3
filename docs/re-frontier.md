@@ -130,9 +130,8 @@ declared host-architecture performance.
   address. The runtime binds `StockVSync(0x800859A8, 0x8009AC68)`, so a negative-mode VSync
   answers the guest from that word. Both `FUN_8007E8F0` and
   `FUN_8007E924` remain registered native overrides with their original guest bodies retained, the
-  failsafe and the exact reset sequence are unchanged, and `tools/verify_vsync_field_clock.py`
-  re-derives the address, both writers, and the whole 22-site call census from the authenticated image
-  while the `tekken3_vsync_field_clock` check diffs that against the constants the product ships. Not
+  failsafe and the exact reset sequence are unchanged, and the address, both writers, and the
+  22-site call census were re-derived from the authenticated image. Not
   yet product-verified. PID `3216829`
   exited itself; no frame, present, or audio sample was produced.
   A complete Ghidra xref pass closes this measured sync domain: the five live callers of the armer and
@@ -160,8 +159,7 @@ declared host-architecture performance.
   **The VSync call domain is now censused at a denominator (GPU timeout owner): 22 direct `jal
   FUN_800859A8` sites over 295,936 scanned words, 21 passing `a0 = -1` and exactly one waiting
   (`FUN_800B0954`, already natively owned).** That is why declaring the query counter is the whole
-  answer on this image, and `tools/verify_vsync_field_clock.py` fails if the ratio or the unresolved
-  set changes. One link is still unclosed: the field word is advanced by `FUN_800863B0`, installed by
+  answer on this image. One link is still unclosed: the field word is advanced by `FUN_800863B0`, installed by
   `FUN_80086358` from `FUN_80085D5C` through `FUN_80085BF8`, which dispatches via `+8` of a function-
   pointer table that `FUN_80085D5C` populates at `+0x14` and `+4` but not at `+8`. Whether the guest's
   own callback runs in a product run is unmeasured, because no authorized product run was available.
@@ -190,7 +188,7 @@ declared host-architecture performance.
   at `+0x50` of the `0xAC`-byte records from `0x800B8D58`) to `0x800ADD5C/5E` and the costumes to
   `0x800ADD98/9A`. VS picks the stage from a character's table (`FUN_8004F3B0`). No prior art names any of
   these (`docs/prior-art.md`).
-- where: `game/frame/fight_warp.*`; `tests/fight_warp_contract.cpp`
+- where: `game/frame/fight_warp.*`
 - gap: Arcade mode, stage choice independent of the characters, and the Force/Ball/Theatre modes are unread.
 
 ## Widescreen ownership and enhancement
@@ -205,8 +203,8 @@ declared host-architecture performance.
 ### T3-06 — Owned widescreen
 - status: re-partial
 - deps: T3-05
-- evidence: `widescreen::WidescreenProjection` publishes the shared plan at `FUN_80080A40`, preserves vertical extent/H ownership, widens the view 384->512 at 16:9, and gives readable wide-only ports of the two measured stage/effect clippers the canvas columns as their horizontal reject: [-62, 430) on Record, where the guest keeps its 368 draw columns. The 4:3 route calls each authenticated original guest body through Lightrec. `tekken3_widescreen_contract` proves both measured display/view pairs plus stage/effect primitives in the added margin on both paths. The fight backdrop is `FUN_8006CC28`'s `POLY_FT4` output (issue 0026).
-- where: `game/widescreen/*`; `tests/widescreen_contract.cpp`; shared `guest_widescreen_projection.*`
+- evidence: `widescreen::WidescreenProjection` publishes the shared plan at `FUN_80080A40`, preserves vertical extent/H ownership, widens the view 384->512 at 16:9, and gives readable wide-only ports of the two measured stage/effect clippers the canvas columns as their horizontal reject: [-62, 430) on Record, where the guest keeps its 368 draw columns. The 4:3 route calls each authenticated original guest body through Lightrec. Both measured display/view pairs plus stage/effect primitives in the added margin were derived on both paths. The fight backdrop is `FUN_8006CC28`'s `POLY_FT4` output (issue 0026).
+- where: `game/widescreen/*`; shared `guest_widescreen_projection.*`
 - gap: The product still has no completed frame, so final sampling, 4:3 pixel identity, and actual added scene coverage are unverified. A real A/B must also determine whether the authored 600/780 stage-tile visibility wedge culls needed wide-margin tiles; any adjustment must derive from the resolved projection. **Issue 0022 adds a second, independent reason there is no frame to widen: the 11 mode handlers at or above `0x800C0000` hold no code at this frontier. A whole-window word-for-word diff against the authenticated image measures 0 of 256 words differing at each of those 11 handlers, against 9 of 9 in-disc handlers byte-identical, and mode 0's loader writes nothing to any handler address — so the geometry a wider projection would reveal is not resident yet, independently of the CD completion.** Tekken 3 already runs at 60 fps: there remains no native renderer, fps60 mode, interpolation/lerp, or interpolation-supporting temporal pipeline in this title's target scope.
 
 ### T3-05 — The CD completion chain, the DMA3 sector tail and the first-sector ordering (resolved)
