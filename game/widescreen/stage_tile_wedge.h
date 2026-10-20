@@ -78,9 +78,10 @@ public:
   };
 
   void install(Core &core) const;
-  void selectTiles(Core &core, const GuestProjectionPlan &plan) const;
+  void selectTiles(Core &core, const psx::present::GuestProjectionPlan &plan) const;
   // The retail wedge widened for `plan`'s projection.
-  [[nodiscard]] static std::int32_t derivedWedge(std::int32_t retailWedge, const GuestProjectionPlan &plan);
+  [[nodiscard]] static std::int32_t derivedWedge(std::int32_t retailWedge,
+                                                 const psx::present::GuestProjectionPlan &plan);
 
   /// Identity for plans that did not widen the projection.
   static std::int32_t widenWedge(std::int32_t retailWedge, int nativeProjectionWidth, int projectionWidth);

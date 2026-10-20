@@ -302,7 +302,7 @@ StageTileWedge::Result StageTileWedge::select(const Query &query, const StageBlo
   return result;
 }
 
-std::int32_t StageTileWedge::derivedWedge(std::int32_t retailWedge, const GuestProjectionPlan &plan) {
+std::int32_t StageTileWedge::derivedWedge(std::int32_t retailWedge, const psx::present::GuestProjectionPlan &plan) {
   return widenWedge(retailWedge, plan.nativeProjectionExtent.width, plan.projectionExtent.width);
 }
 
@@ -313,7 +313,7 @@ StageTileWedge::DirectionWord StageTileWedge::guestDirection(Core &core, std::in
           static_cast<std::int32_t>(static_cast<std::int16_t>(core.mem_r16(kCosineTable + offset)))};
 }
 
-void StageTileWedge::selectTiles(Core &core, const GuestProjectionPlan &plan) const {
+void StageTileWedge::selectTiles(Core &core, const psx::present::GuestProjectionPlan &plan) const {
   if (!plan.widescreen()) {
     originalSelector(&core);
     return;

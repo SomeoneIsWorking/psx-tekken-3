@@ -14,22 +14,22 @@ namespace tekken3::widescreen {
 const WidescreenProjection &policyFrom(Core *core, const char *owner);
 
 // The policy is immutable; the plan each call latches is the caller's (the Core's session).
-class WidescreenProjection final : public GuestWidescreenProjection {
+class WidescreenProjection final : public psx::present::GuestWidescreenProjection {
 public:
   using GuestBody = void (*)(Core *);
-  using ProjectionLatch = GuestProjectionPlan (*)(Core &, GuestProjectionGeometry);
+  using ProjectionLatch = psx::present::GuestProjectionPlan (*)(Core &, psx::present::GuestProjectionGeometry);
 
   WidescreenProjection();
   WidescreenProjection(ProjectionLatch latch, GuestBody retailDimensions);
 
   void install(Core &core) const;
-  void publishDimensions(Core &core, GuestProjectionPlan &plan) const;
-  void clipStagePrimitives(Core &core, const GuestProjectionPlan &plan) const;
-  void clipEffectPrimitive(Core &core, const GuestProjectionPlan &plan) const;
+  void publishDimensions(Core &core, psx::present::GuestProjectionPlan &plan) const;
+  void clipStagePrimitives(Core &core, const psx::present::GuestProjectionPlan &plan) const;
+  void clipEffectPrimitive(Core &core, const psx::present::GuestProjectionPlan &plan) const;
 
   [[nodiscard]] const StageTileWedge &stageWedge() const;
 
-  static GuestProjectionGeometry measuredGeometry(std::uint32_t viewWidth, std::uint32_t viewHeight);
+  static psx::present::GuestProjectionGeometry measuredGeometry(std::uint32_t viewWidth, std::uint32_t viewHeight);
 
 private:
   static void publishDimensionsOverride(Core *core);

@@ -61,7 +61,7 @@ struct CanvasColumns {
   int right = 0;
 };
 
-CanvasColumns canvasColumns(const GuestProjectionPlan &plan) {
+CanvasColumns canvasColumns(const psx::present::GuestProjectionPlan &plan) {
   const int margin = (plan.presentationExtent.width - plan.guestDrawWidth) / 2;
   return {-margin, plan.guestDrawWidth + margin};
 }
@@ -112,7 +112,8 @@ WidescreenProjection::WidescreenProjection(ProjectionLatch latch, GuestBody reta
   }
 }
 
-GuestProjectionGeometry WidescreenProjection::measuredGeometry(std::uint32_t viewWidth, std::uint32_t viewHeight) {
+psx::present::GuestProjectionGeometry WidescreenProjection::measuredGeometry(std::uint32_t viewWidth,
+                                                                             std::uint32_t viewHeight) {
   if (viewWidth == kBootViewWidth && viewHeight == kBootViewHeight) {
     return {{static_cast<int>(viewWidth), static_cast<int>(viewHeight)}, static_cast<int>(kBootDrawWidth)};
   }
@@ -140,8 +141,8 @@ const StageTileWedge &WidescreenProjection::stageWedge() const {
   return stageWedge_;
 }
 
-void WidescreenProjection::publishDimensions(Core &core, GuestProjectionPlan &plan) const {
-  const GuestProjectionGeometry native = measuredGeometry(core.r[4], core.r[5]);
+void WidescreenProjection::publishDimensions(Core &core, psx::present::GuestProjectionPlan &plan) const {
+  const psx::present::GuestProjectionGeometry native = measuredGeometry(core.r[4], core.r[5]);
   plan = latch_(core, native);
   if (plan.projectionExtent.width == 0 || plan.projectionExtent.width > std::numeric_limits<std::uint16_t>::max()) {
     lucent::error("wide", "Tekken 3 received invalid projected width {}", plan.projectionExtent.width);
@@ -161,7 +162,7 @@ void WidescreenProjection::publishDimensions(Core &core, GuestProjectionPlan &pl
   retailDimensions_(&core);
 }
 
-void WidescreenProjection::clipStagePrimitives(Core &core, const GuestProjectionPlan &plan) const {
+void WidescreenProjection::clipStagePrimitives(Core &core, const psx::present::GuestProjectionPlan &plan) const {
   if (!plan.widescreen()) {
     retailStageClip_(&core);
     return;
@@ -251,7 +252,7 @@ void WidescreenProjection::clipStagePrimitives(Core &core, const GuestProjection
   core.r[2] = static_cast<std::uint32_t>(capacityRemaining);
 }
 
-void WidescreenProjection::clipEffectPrimitive(Core &core, const GuestProjectionPlan &plan) const {
+void WidescreenProjection::clipEffectPrimitive(Core &core, const psx::present::GuestProjectionPlan &plan) const {
   if (!plan.widescreen()) {
     retailEffectClip_(&core);
     return;
