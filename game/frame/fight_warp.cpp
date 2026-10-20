@@ -2,47 +2,16 @@
 
 #include <lucent/log.h>
 
-#include <charconv>
-
 namespace tekken3::frame {
-namespace {
 
-std::optional<std::uint32_t> character(std::string_view word) {
-  std::uint32_t value = 0;
-  const auto parsed = std::from_chars(word.data(), word.data() + word.size(), value);
-  if (parsed.ec != std::errc{} || parsed.ptr != word.data() + word.size() || value >= FightWarp::kCharacterCount) {
-    return std::nullopt;
-  }
-  return value;
-}
-
-std::string_view nextWord(std::string_view &rest) {
-  const std::size_t start = rest.find_first_not_of(' ');
-  if (start == std::string_view::npos) {
-    rest = {};
-    return {};
-  }
-  rest.remove_prefix(start);
-  const std::size_t end = rest.find(' ');
-  const std::string_view word = rest.substr(0, end);
-  rest = end == std::string_view::npos ? std::string_view{} : rest.substr(end);
-  return word;
-}
-
-} // namespace
-
-std::string FightWarp::arm(std::string_view line) {
-  std::string_view rest = line;
-  nextWord(rest);
-  const std::string_view firstWord = nextWord(rest);
-  const std::string_view secondWord = nextWord(rest);
-  if (firstWord.empty() || secondWord.empty() || !nextWord(rest).empty()) {
+std::string FightWarp::arm(const psx::debug::CommandArgs &args) {
+  if (args.size() != 3) {
     return lucent::format(
         "usage: warp <p1 character 0..{}> <p2 character 0..{}>", kCharacterCount - 1, kCharacterCount - 1);
   }
-  const auto first = character(firstWord);
-  const auto second = character(secondWord);
-  if (!first || !second) {
+  const auto first = args.number(1);
+  const auto second = args.number(2);
+  if (!first || !second || *first >= kCharacterCount || *second >= kCharacterCount) {
     return lucent::format("refused: characters are 0..{}", kCharacterCount - 1);
   }
   request_ = Request{*first, *second};

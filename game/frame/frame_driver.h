@@ -72,9 +72,8 @@ public:
   void runBootPrefix(Core &core);
   void stepFrame(Core &core, std::uint32_t frame) override;
   // Arms `warp <p1> <p2>`; later field boundaries take it through the menu and character select.
-  std::string armWarp(std::string_view line);
+  std::string armWarp(const psx::debug::CommandArgs &args);
 
-  static FrameDriver &from(Core &core);
 
 private:
   static void mainOverride(Core *core);

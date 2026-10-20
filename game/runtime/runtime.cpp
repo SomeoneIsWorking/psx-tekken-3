@@ -25,12 +25,12 @@ constexpr psx::input::StockPadBuffers::Layout kPadBuffers{
 Runtime::Runtime() : vsync_({.entry = field::kEntry, .queryCounter = field::kCounter}), pad_(kPadBuffers) {}
 
 void Runtime::startProgram(Core &core) {
-  frame::FrameDriver::from(core).runBootPrefix(core);
+  core.game->frameDriverAs<frame::FrameDriver>().runBootPrefix(core);
 }
 
 void Runtime::registerOverrides(Game &game) {
   vsync_.bind(game);
-  frame::FrameDriver::from(game.core).installOverrides();
+  game.frameDriverAs<frame::FrameDriver>().installOverrides();
   cd::installOverrides(game.core);
   render::installOverrides(game.core);
   projection_.install(game.core);
@@ -56,7 +56,7 @@ bool Runtime::titleCommand(Core &core, const psx::game::TitleCommandLine &input,
   if (std::strcmp(input.command, "warp") != 0) {
     return false;
   }
-  std::fprintf(reply, "%s\n", frame::FrameDriver::from(core).armWarp(input.line).c_str());
+  std::fprintf(reply, "%s\n", core.game->frameDriverAs<frame::FrameDriver>().armWarp(input.args).c_str());
   return true;
 }
 

@@ -1,11 +1,11 @@
 #pragma once
 
+#include "command_args.h"
 #include "frame/finite_frame.h"
 
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <string_view>
 
 namespace tekken3::frame {
 
@@ -44,8 +44,8 @@ public:
     std::uint32_t second = 0;
   };
 
-  // Parses one command line; the returned text answers the client.
-  std::string arm(std::string_view line);
+  // The returned text answers the client.
+  std::string arm(const psx::debug::CommandArgs &args);
   [[nodiscard]] bool armed() const {
     return request_.has_value();
   }
