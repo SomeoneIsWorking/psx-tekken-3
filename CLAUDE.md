@@ -48,7 +48,7 @@ behaviour is a `Runtime` virtual or a stock psxport class bound in `registerOver
 bag; Tekken source must not include `LegacyGameRuntimeAdapter`, `GameConfig` or `GameHooks`.
 
 `external/psxport` is a relative symlink to the workspace's live framework checkout when one exists, or
-a clone of its main where there is none. psxport's `tools/psxport_fetch.py`, run from psxport `main` by `tools/run.py` and CI, establishes whichever applies;
+a clone of its main where there is none. psxport's `tools/psxport_fetch.py`, run from psxport `main` by `tools/run.py`, establishes whichever applies;
 there is no framework pin, so a framework edit is immediately this game's framework.
 Framework edits happen in the workspace's `psxport`, never here.
 
