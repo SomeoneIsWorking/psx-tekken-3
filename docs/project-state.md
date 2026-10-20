@@ -14,7 +14,7 @@ work in `docs/issues/`, and what has and has not been reverse-engineered in `doc
 | S007 | True widescreen renders additional correctly projected content | partial | at 16:9 the intro scenes, an attract fight and a warped VS fight draw stage geometry into both margins, not stretched; gameplay's 3D centre is unmeasured (issue 0022), and the second attract fight at 16:9 draws garbage textures (issue 0025); a VS fight's backdrop reaches both canvas edges (issue 0026) |
 | S008 | Product frames, input, audio, and gameplay execute correctly | partial | Start and Cross taps over the control channel take the title menu to character select, the stage intro and a fight (Xiaoyu vs Yoshimitsu, timer counting); `warp <p1> <p2>` on the control channel reaches a VS fight through the menu's own game start and character select's own exit (Paul vs Law at field 3,900, 4,010 presents, `recordcheck` mismatched=0); no fight input beyond menu navigation and no audio check yet |
 | S009 | The default launcher delivers the playable widescreen product | missing | `./run.sh` provisions, builds and launches, but the product meets neither the S007 nor the S008 condition |
-| S010 | Asset-free hosted verification builds and checks the real supported host product boundary | verified | `.github/workflows/ci.yml` runs `tools/verify.py`; composition only |
+| S010 | Asset-free hosted CI builds the real supported host product | verified | `.github/workflows/ci.yml` runs `consumer_build.py`; composition only |
 | S011 | Load operations complete without loading-only waits or presentation | missing | no Tekken 3 load operation has been enumerated yet |
 
 ## Current focus

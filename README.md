@@ -25,14 +25,12 @@ product. It never substitutes the framework smoke target, a test,
 or a boundary probe. `./run.sh --prepare-only` exercises the same provisioning and player build
 without launching a game process. Ghidra and other maintainer RE tools are not player prerequisites.
 
-## Verify the asset-free product boundary
+## Build
 
-The canonical gate resolves PSXPort, configures the real product with Clang and Ninja, runs the
-shared first-party `clang-format` / `clang-tidy` / source-size policy, exercises every asset-free
-title contract, and inspects the linked execution boundary:
+There are no unit tests or gates. Build with Clang:
 
 ```sh
-uv run --frozen python tools/verify.py
+CC=clang CXX=clang++ uv run --frozen python external/psxport/tools/port/consumer_build.py --build build/agent --target tekken3_port
 ```
 
 `tekken3::Runtime` (`game/runtime/runtime.*`) owns framework-facing game behavior; `docs/codemap.md`

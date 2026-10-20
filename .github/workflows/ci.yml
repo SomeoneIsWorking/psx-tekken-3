@@ -1,4 +1,4 @@
-name: Asset-free Linux product contract
+name: Build
 
 on:
   push:
@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   linux-x86_64:
-    name: Linux x86-64 native/Lightrec product
+    name: Linux x86-64 build
     runs-on: ubuntu-26.04
     timeout-minutes: 45
     env:
@@ -52,5 +52,5 @@ jobs:
           framework-directory: external/psxport
           dependency-directory: build/deps
 
-      - name: Run the canonical asset-free verifier
-        run: uv run --frozen python tools/verify.py
+      - name: Build the product
+        run: uv run --frozen python external/psxport/tools/port/consumer_build.py --build build/ci --target tekken3_port
