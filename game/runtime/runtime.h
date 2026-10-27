@@ -1,11 +1,11 @@
 #pragma once
 
+#include "debug/debug_menu.h"
 #include "game_runtime.h"
 #include "stock_pad_buffers.h"
 #include "stock_vsync.h"
 #include "widescreen/widescreen.h"
 
-#include <cstdio>
 #include <memory>
 
 class Core;
@@ -14,7 +14,7 @@ class Game;
 namespace tekken3 {
 
 // Tekken 3 (SLUS_004.02) on Record at its native 60 fps: the linked libetc VSync and libpad buffers bound at
-// this executable's addresses, the finite frame driver, the widened projection and the `warp` command.
+// this executable's addresses, the finite frame driver, the widened projection and the debug menu.
 class Runtime final : public psx::game::GameRuntime {
 public:
   Runtime();
@@ -28,13 +28,15 @@ public:
 
   const psx::present::GuestWidescreenProjection *guestWidescreenProjection() const override;
 
-  // `warp <p1> <p2>`.
-  bool titleCommand(Core &core, const psx::game::TitleCommandLine &input, std::FILE *reply) override;
+  const psx::game::TitleDebugMenu &debugMenu() const override {
+    return debugMenu_;
+  }
 
 private:
   psx::hle::StockVSync vsync_;
   psx::input::StockPadBuffers pad_;
   widescreen::WidescreenProjection projection_;
+  DebugMenu debugMenu_;
 };
 
 } // namespace tekken3

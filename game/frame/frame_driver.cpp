@@ -208,8 +208,8 @@ void FrameDriver::stepFrame(Core &core, std::uint32_t frame) {
   FiniteFrame::step(machine_, stepState_);
 }
 
-std::string FrameDriver::armWarp(const psx::debug::CommandArgs &args) {
-  return warp_.arm(args);
+std::string FrameDriver::armWarp(std::uint32_t first, std::uint32_t second) {
+  return warp_.arm(first, second);
 }
 
 } // namespace tekken3::frame

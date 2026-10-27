@@ -31,6 +31,7 @@ psxport's Lightrec executor.
 | `tekken3::Session`, `session(core)` | `game/runtime/session.*` | The per-Core projection plan the widescreen overrides latch and read |
 | `frame::Machine`, `FiniteFrame` | `game/frame/finite_frame.*` | The guest main-loop bodies replaced natively: boot prefix `0x80028BA0`, the two retail initializers as spanning calls, frame barrier `0x800296C4`, display init `0x800B0954` without its VSync wait, and the field step |
 | `frame::FrameDriver`, `CoreMachine` | `game/frame/frame_driver.*` | One display field: logic frame, an armed warp at a boundary with no guest call in flight, then `FiniteFrame::step`; holds the `ResumableGuestCall` a mode body spans fields with |
+| `tekken3::DebugMenu` | `game/debug/debug_menu.*` | The title debug menu (psxport `TitleDebugMenu`): `warp <p1> <p2>` |
 | `frame::FightWarp` | `game/frame/fight_warp.*` | `warp <p1> <p2>`: the title menu's VS game start (`0x800DA910`, then `0x8007C30C(1)`), then character select's own exit (phase 3) with both choices written |
 | `execution::FiniteGuestCall` | `game/execution/finite_guest_call.*` | A guest call that must return within a field, and the account of one that did not |
 | `tekken3::loader` facts | `game/cd/loader_lifecycle.h` | The decoded CD-read lifecycle: wait byte, chain record, callbacks |
@@ -58,7 +59,7 @@ psxport's Lightrec executor.
 | host pad | psxport `Pad::serviceFrame` (from `Machine::servicePad` in the barrier), then `Runtime::deliverPad` |
 | libcd | the guest's own; reads are instant; `sector_ready_order` keeps its completion order |
 | widescreen | `Runtime::guestWidescreenProjection` → `WidescreenProjection` latches into `Session::projectionPlan`; clippers and the stage wedge read that plan; 4:3 runs the retail bodies |
-| warp | `titleCommand("warp")` → `FrameDriver::armWarp` → `FightWarp::apply` at a field boundary |
+| warp | `DebugMenu` (`game/debug/debug_menu.*`, psxport `TitleDebugMenu`) → `FrameDriver::armWarp` → `FightWarp::apply` at a field boundary |
 
 ## Where does it go?
 

@@ -4,19 +4,10 @@
 
 namespace tekken3::frame {
 
-std::string FightWarp::arm(const psx::debug::CommandArgs &args) {
-  if (args.size() != 3) {
-    return lucent::format(
-        "usage: warp <p1 character 0..{}> <p2 character 0..{}>", kCharacterCount - 1, kCharacterCount - 1);
-  }
-  const auto first = args.number(1);
-  const auto second = args.number(2);
-  if (!first || !second || *first >= kCharacterCount || *second >= kCharacterCount) {
-    return lucent::format("refused: characters are 0..{}", kCharacterCount - 1);
-  }
-  request_ = Request{*first, *second};
+std::string FightWarp::arm(std::uint32_t first, std::uint32_t second) {
+  request_ = Request{first, second};
   started_ = false;
-  return lucent::format("ok: VS warp armed, characters {} and {}", *first, *second);
+  return lucent::format("ok: VS warp armed, characters {} and {}", first, second);
 }
 
 void FightWarp::apply(Machine &machine) {
