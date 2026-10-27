@@ -51,15 +51,12 @@ def wait_for_endpoint(port: int, seconds: float) -> tuple[LiveClient | None, obj
     deadline = time.time() + seconds
     error: object = "never attempted"
     while time.time() < deadline:
-        client = None
         try:
             client = LiveClient(port=port, timeout=5.0)
             client.send("frame")
             return client, None
         except (OSError, RuntimeError) as problem:
             error = problem
-            if client is not None:
-                client.close()
             time.sleep(0.5)
     return None, error
 
@@ -107,7 +104,6 @@ def main() -> int:
     if outstanding == -1 or chain == -1:
         print("  REFUSED: a required word could not be read, so no verdict is offered. "
               "An unreadable register is not a zero register.")
-        client.close()
         return 2
     if outstanding == 0 and chain != 2:
         print("  NO COMMAND IS IN FLIGHT (0x8009B774 == 0 and the chain is not 2): the loader has not"
@@ -135,7 +131,6 @@ def main() -> int:
         print(f"  THE SPIN: *{SPIN_SLOT:#010x} read as 0x{block:08X}, which is not a guest pointer, so"
               " the poll is on a NULL-derived address. Report that as an uninitialised slot, NOT as"
               " 'the status bit is clear' — the two are different bugs.")
-    client.close()
     return 0
 
 

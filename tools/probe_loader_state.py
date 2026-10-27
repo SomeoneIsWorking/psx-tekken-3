@@ -49,15 +49,12 @@ def wait_for_endpoint(port: int, seconds: float) -> tuple["LiveClient | None", o
     deadline = time.time() + seconds
     error: object = "never attempted"
     while time.time() < deadline:
-        client = None
         try:
             client = LiveClient(port=port, timeout=5.0)
             client.send("frame")
             return client, None
         except (OSError, RuntimeError) as problem:
             error = problem
-            if client is not None:
-                client.close()
             time.sleep(0.5)
     return None, error
 
@@ -105,7 +102,6 @@ def main() -> int:
 
     print("\nprobe: guest execution denominators")
     print(client.send("guest"))
-    client.close()
     return 0
 
 
