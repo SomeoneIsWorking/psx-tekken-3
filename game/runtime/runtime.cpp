@@ -8,8 +8,6 @@
 #include "render/gpu_queue_timeout.h"
 #include "runtime/session.h"
 
-#include <cstring>
-
 namespace tekken3 {
 namespace {
 
@@ -50,14 +48,6 @@ void Runtime::deliverPad(Core &core, const psx::input::PadDelivery &delivery) {
 
 const psx::present::GuestWidescreenProjection *Runtime::guestWidescreenProjection() const {
   return &projection_;
-}
-
-bool Runtime::titleCommand(Core &core, const psx::game::TitleCommandLine &input, std::FILE *reply) {
-  if (std::strcmp(input.command, "warp") != 0) {
-    return false;
-  }
-  std::fprintf(reply, "%s\n", core.game->frameDriverAs<frame::FrameDriver>().armWarp(input.args).c_str());
-  return true;
 }
 
 } // namespace tekken3

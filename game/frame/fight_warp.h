@@ -1,6 +1,5 @@
 #pragma once
 
-#include "command_args.h"
 #include "frame/finite_frame.h"
 
 #include <cstdint>
@@ -44,8 +43,8 @@ public:
     std::uint32_t second = 0;
   };
 
-  // The returned text answers the client.
-  std::string arm(const psx::debug::CommandArgs &args);
+  // Arms characters below kCharacterCount; the returned text answers the client.
+  std::string arm(std::uint32_t first, std::uint32_t second);
   [[nodiscard]] bool armed() const {
     return request_.has_value();
   }

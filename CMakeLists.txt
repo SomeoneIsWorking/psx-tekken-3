@@ -33,6 +33,7 @@ add_library(
   game/cd/sector_ready_order.cpp
   game/execution/finite_guest_call.cpp
   game/fieldclock/field_clock.cpp
+  game/debug/debug_menu.cpp
   game/frame/fight_warp.cpp
   game/frame/finite_frame.cpp
   game/frame/frame_driver.cpp

@@ -50,5 +50,5 @@ Title hops only. Each row is where Tekken 3 joins a psxport feature hop (`psxpor
 
 | hop | joins | owner |
 |---|---|---|
-| 1 | psxport F-DEBUG.1 | `game/runtime/runtime.cpp:Runtime::titleCommand` — `warp <p1> <p2>` |
+| 1 | psxport F-DEBUG.1 | `game/debug/debug_menu.cpp:tekken3::DebugMenu` — `warp <p1> <p2>` |
 | 2 | psxport F-DEBUG.1 | `game/frame/fight_warp.cpp:FightWarp::apply` — the menu's VS start (`0x800DA910`), then character select's own exit |
