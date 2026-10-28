@@ -1,13 +1,19 @@
 ---
 id: 17
 title: The pad driver's second wait loop is a TIMEOUT the port cannot expire, because RCnt2 only moves at executor segment boundaries
-status: open
+status: resolved
 symptom: the product sits in FUN_80093478's second loop burning a whole per-turn budget and never returns
 state_items: S003,S004,S007,S008
 tags: re-first,pad,sio,rcnt2,cpu-executor,lightrec
 created: 2026-09-28
-updated: 2026-09-28
+updated: 2026-10-28
 ---
+
+**Resolved by option (b).** Device reads now commit the segment's elapsed time:
+`commitDeviceClock` in psxport `runtime/cpu/lightrec_executor.cpp` feeds `lightrec_current_cycle_count`
+through `SegmentClockLedger::commitThrough` (`runtime/cpu/segment_clock.cpp`), so RCnt2 moves mid-segment.
+The units question was settled as instructions by the flat `kLightrecCyclesPerInstruction = 2`
+(psxport issue 0007, deferred). Issue 0018 records the pad loop returning in 6,526 cycles; S003 runs fights.
 
 ## Answer
 
