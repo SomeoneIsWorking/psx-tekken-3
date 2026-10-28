@@ -1,14 +1,11 @@
 #include "frame/frame_driver.h"
 
 #include "core.h"
-#include "emulated_time.h"
 #include "execution/finite_guest_call.h"
 #include "execution_control.h"
 #include "execution_services.h"
-#include "field_rate.h"
 #include "game.h"
 #include "native_dispatch.h"
-#include "segment_clock.h"
 
 #include <lucent/log.h>
 
@@ -62,12 +59,9 @@ bool CoreMachine::settled(const psx::cpu::CallStep &step) {
   return step.outcome == psx::cpu::CallOutcome::Returned;
 }
 
-// A whole field of executor cycles per turn; a shorter turn lets a CD deadline land on VBlank.
+// A whole field per turn; a shorter turn lets a CD deadline land on VBlank.
 psx::cpu::CallStep CoreMachine::advance() {
-  const std::uint64_t fieldTicks =
-      psx::frame::displayFieldCpuTicks(1, 1, psx::frame::fieldRateMilliHz(game_.timing.displayFieldRate()));
-  return spanningCall_.advance(
-      {}, psx::cpu::ExecutionBudget::fromCycles(fieldTicks * psx::cpu::kLightrecCyclesPerInstruction));
+  return spanningCall_.advance({}, psx::cpu::ExecutionBudget::currentTurn(core_));
 }
 
 void CoreMachine::deliverEvent(std::uint32_t eventClass, std::uint32_t spec) {
