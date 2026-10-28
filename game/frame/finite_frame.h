@@ -52,9 +52,6 @@ struct StepState {
 // The three overridden entries and the field step, reproducing the guest bodies they replace.
 class FiniteFrame {
 public:
-  // One NTSC field (59.94 Hz) of CPU ticks at two executor cycles each; a shorter turn lets a CD deadline land on
-  // VBlank.
-  static constexpr std::uint32_t kFieldTurnCycles = 565046u * 2u;
   static constexpr std::uint32_t kMain = 0x80028BA0u;
   static constexpr std::uint32_t kFrameBarrier = 0x800296C4u;
   static constexpr std::uint32_t kDisplayInit = 0x800B0954u;
