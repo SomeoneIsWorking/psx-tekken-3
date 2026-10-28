@@ -9,6 +9,8 @@ Product path: `run.sh` → `tools/run.py` (provision, build) → the framework m
 (`registerOverrides`, `startProgram`) → `tekken3::frame::FrameDriver::stepFrame` once per display field on
 psxport's Lightrec executor.
 
+Frame loop: owned. `FrameDriver` runs the main loop body (`FiniteFrame::step`, retail `0x80028BCC`) one field per step; the leading VSync(0) of `0x800B0954` is removed.
+
 ## Placement rules
 
 - Everything is in namespace `tekken3` (sub-namespaces `frame`, `execution`, `cd`, `render`, `widescreen`,
