@@ -18,7 +18,8 @@ public:
 };
 
 // Retail delivers the class-2 completion from the VBlank timer before the drive's first sector; with
-// instant reads the sector's INT1 comes first. Run before the ready hook handles a data-ready INT.
+// instant reads the sector's INT1 comes first. Run before the ready hook handles a data-ready INT; a
+// sector that arrives before the held chain's read command is the previous stream's and is left alone.
 void completeReadBeforeSector(Machine &machine, std::uint32_t eventClass);
 
 // The command writer flushes pending INT flags first. Retail serviced a sector INT1 before the next

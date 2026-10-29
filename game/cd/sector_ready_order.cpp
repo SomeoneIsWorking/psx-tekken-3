@@ -43,6 +43,21 @@ bool sectorCallbackInstalled(const Machine &machine) {
   return machine.read32(loader::kSectorCallbackFlag) == 1u;
 }
 
+std::uint32_t chainEntry(std::uint32_t index) {
+  return loader::kChainQueue + (index % loader::kChainEntries) * loader::kChainEntryBytes;
+}
+
+// A sector belongs to the held read only once that chain's read command is the drive's current one;
+// before it, a data INT is a sector of the stream the chain's Pause is stopping.
+bool readCommandIssued(const Machine &machine) {
+  const std::uint32_t index = machine.read32(loader::kChainCurrentIndex);
+  const std::uint32_t current = chainEntry(index);
+  const std::uint32_t id = machine.read32(current);
+  const std::uint8_t command = machine.read8(current + loader::kChainCommandOffset);
+  const bool lastOfChain = machine.read32(chainEntry(index + 1u)) != id;
+  return id != 0 && lastOfChain && (command == loader::kCommandReadN || command == loader::kCommandReadS);
+}
+
 void readyHookOverride(Core *core) {
   const R3000 caller = static_cast<const R3000 &>(*core);
   CoreMachine machine(*core);
@@ -76,7 +91,7 @@ void chainCompletionOverride(Core *core) {
 
 void completeReadBeforeSector(Machine &machine, std::uint32_t eventClass) {
   if (eventClass != loader::kSectorEventClass || machine.read8(loader::kHeldByte) == 0 ||
-      sectorCallbackInstalled(machine)) {
+      sectorCallbackInstalled(machine) || !readCommandIssued(machine)) {
     return;
   }
   machine.deliverChainCompletion(loader::kChainCompletionClass);

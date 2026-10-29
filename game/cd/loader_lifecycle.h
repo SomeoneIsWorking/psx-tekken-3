@@ -27,6 +27,17 @@ inline constexpr std::uint32_t kChainCompletionCallback = 0x8006C26Cu;
 inline constexpr std::uint32_t kChainRecordSlot = 0x800A3DD0u;
 inline constexpr std::uint32_t kChainCallbackOffset = 12u;
 
+// The chain's command queue (FUN_8008F08C fills, FUN_8008E928 retires): 8 entries of 0x18 bytes, +0 the chain
+// id, +4 the command byte. A read chain is Pause, SetMode, SetLoc, then the read; its last entry is current
+// once the read command went to the drive.
+inline constexpr std::uint32_t kChainQueue = 0x800A3D78u;
+inline constexpr std::uint32_t kChainEntryBytes = 0x18u;
+inline constexpr std::uint32_t kChainEntries = 8u;
+inline constexpr std::uint32_t kChainCommandOffset = 4u;
+inline constexpr std::uint32_t kChainCurrentIndex = 0x800A3E3Cu;
+inline constexpr std::uint8_t kCommandReadN = 0x06u;
+inline constexpr std::uint8_t kCommandReadS = 0x1Bu;
+
 // FUN_8006C26C: a class-2 completion installs the per-sector callback via FUN_80091F38.
 inline constexpr std::uint32_t kChainCompletionClass = 2u;
 inline constexpr std::uint32_t kSectorCallbackEntry = 0x8006C2A0u;
