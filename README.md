@@ -3,6 +3,22 @@
 PC-native PlayStation port of Tekken 3, built on
 [psxport](https://github.com/SomeoneIsWorking/psxport).
 
+## Screenshots
+
+![Lei and Jin square off on the Hong Kong stage in 16:9](docs/media/fight-hong-kong.png)
+
+![Hwoarang's high kick over the temple in the intro, 16:9](docs/media/intro-temple.png)
+
+![Yoshimitsu and Xiaoyu in the forest, 16:9](docs/media/fight-forest.png)
+
+![The same forest frame at the original 4:3 and in 16:9](docs/media/widescreen-comparison.png)
+
+The same frame at 4:3 and 16:9: the stage, trees and floor continue into the added margins; nothing is stretched.
+
+![A throw from the attract intro at 60 fps](docs/media/gameplay-60fps.webp)
+
+A throw from the attract intro: every field is a new frame at the game's native 60 fps, in 16:9.
+
 The factual capability inventory and current focus live in `docs/project-state.md`; the ordered
 binary-evidence dependency chain and per-step RE status live in `docs/re-frontier.md`. Tekken 3
 (`SLUS_004.02`) already runs at 60 fps, so this port exposes no fps60/interpolation option and no
