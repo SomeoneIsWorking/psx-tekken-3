@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Tekken 3
+GenericName=Fighting game
+Comment=PC-native port of Tekken 3
+Icon=dev.someoneisworking.tekken3
+Terminal=false
+Categories=Game;ActionGame;
+Keywords=Tekken;Fighting;PlayStation;Port;
+StartupNotify=true
