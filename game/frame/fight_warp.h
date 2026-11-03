@@ -8,7 +8,7 @@
 
 namespace tekken3::frame {
 
-// `warp <p1> <p2>`: a VS fight between two chosen characters, on the stage VS mode picks for them.
+// The warp catalogue's P1/P2 arrival: a VS fight between two chosen characters, on the stage VS mode picks for them.
 // From the main menu the warp makes the menu's own game-start call (title overlay 0x800DA910 with game type VS,
 // which enters mode 7), and when character select (mode 10) waits for its players it writes both choices and
 // takes the select's own exit (phase 3, FUN_80053FAC), so mode 8 builds the fight from them.
