@@ -5,22 +5,33 @@
 #include "frame/frame_driver.h"
 #include "game.h"
 
+#include <lucent/log.h>
+
+#include <vector>
+
 namespace tekken3 {
 
 DebugMenu::DebugMenu() {
   using frame::FightWarp;
-  using psx::game::DebugCall;
-  using psx::game::DebugParam;
-  section("Fight Warp");
-  verb({
-      .name = "warp",
-      .summary = "Start that VS fight",
-      .params = {DebugParam::integer("p1", 0, FightWarp::kCharacterCount - 1),
-                 DebugParam::integer("p2", 0, FightWarp::kCharacterCount - 1)},
-      .run =
-          [](const DebugCall &call) {
-            call.reply =
-                call.core.game->frameDriverAs<frame::FrameDriver>().armWarp(call.values.u32(0), call.values.u32(1));
+  warp({
+      .levels = {"p1", "p2"},
+      .places =
+          [](Core &) {
+            std::vector<psx::game::WarpPlace> fighters;
+            for (std::uint32_t p1 = 0; p1 < FightWarp::kCharacterCount; ++p1) {
+              psx::game::WarpPlace place{.name = lucent::format("character {}", p1)};
+              for (std::uint32_t p2 = 0; p2 < FightWarp::kCharacterCount; ++p2) {
+                place.places.push_back({
+                    .name = lucent::format("vs character {}", p2),
+                    .arrive =
+                        [p1, p2](Core &core) {
+                          return core.game->frameDriverAs<frame::FrameDriver>().armWarp(p1, p2);
+                        },
+                });
+              }
+              fighters.push_back(std::move(place));
+            }
+            return fighters;
           },
       .refusal =
           [](Core &core) {
