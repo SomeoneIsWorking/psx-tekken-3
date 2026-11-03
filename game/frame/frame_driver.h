@@ -71,7 +71,7 @@ public:
   // Dispatches the retail entry at core.pc until the native main asks for the host transfer.
   void runBootPrefix(Core &core);
   void stepFrame(Core &core, std::uint32_t frame) override;
-  // Arms `warp <p1> <p2>`; later field boundaries take it through the menu and character select.
+  // Arms a P1/P2 fight arrival; later field boundaries take it through the menu and character select.
   std::string armWarp(std::uint32_t first, std::uint32_t second);
 
 private:
