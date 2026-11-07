@@ -75,3 +75,5 @@ real bytes on every run. `titles/tekken3/README.md` records the startup model.
 
 The current product discriminator is bounded guest work through Lightrec compared with the
 independent Mednafen oracle; the retired interpreter probe is not a current gate.
+
+Built with AI assistance (Claude and other LLMs).
