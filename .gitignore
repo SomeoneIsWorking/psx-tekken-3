@@ -14,3 +14,6 @@ __pycache__/
 
 # Ad-hoc gdb scripts; breakpoints perturb the wall-clock-driven field clock.
 tools/probe_*.gdb
+
+# long-lived ignored inputs and derived assets (Ghidra projects, decompiled output)
+env-assets/
