@@ -23,6 +23,8 @@ Frame loop: owned. `FrameDriver` runs the main loop body (`FiniteFrame::step`, r
 - A measured address lives at a name in its owner's header with its provenance.
 - psxport (`external/psxport`, a link to the live checkout) owns the executor, override keys, the stock
   VSync/pad classes and presentation. This repository supplies addresses and title behaviour.
+- `external/tekken3-xport` (submodule, MIT) is the non-matching decomp of `SLUS_004.02` and its BNS overlays
+  (`docs/prior-art.md`).
 
 ## Owners
 
