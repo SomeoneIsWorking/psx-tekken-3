@@ -56,7 +56,3 @@ psxport_add_product(
 add_dependencies(tekken3_port gen_gpu_shaders)
 target_compile_features(tekken3_port PRIVATE cxx_std_20)
 target_include_directories(tekken3_port PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/title_metadata")
-set_target_properties(
-  tekken3_port PROPERTIES
-  ENABLE_EXPORTS ON
-  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
