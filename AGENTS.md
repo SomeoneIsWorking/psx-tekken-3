@@ -1,18 +1,18 @@
 # Tekken 3 port
 
-Tekken 3 (`SLUS_004.02`) ships as one native/Lightrec psxport product; the authenticated executable
+Tekken 3 (`SLUS_004.02`) ships as one native/interpreter psxport product; the authenticated executable
 is runtime data. Framework contract: `external/psxport/AGENTS.md`; framework changes:
 `external/psxport/docs/workspace/PROTOCOL.md`. Execution policy: the `dynarec-port` and
 `dynarec-overrides` skills.
 
 ## Execution
 
-psxport owns machine-state synchronization, HLE/device callbacks, override invalidation,
-executable-memory invalidation, and bounded exits; Lightrec owns its code cache and executable
-memory. A release threshold on Lightrec's interpreted-block fallback must fail loudly.
+psxport's per-`Core` interpreter (`GuestExecutor`) runs every guest instruction that isn't native,
+directly on `Core`'s state. psxport owns HLE/device callbacks, override invalidation,
+executable-memory invalidation, and bounded exits.
 
-The first discriminator is `NAMCO PRESENTS` within 1,200 frames with nonzero Lightrec execution and
-all 14 address-based original calls routed through the shipping dispatcher.
+The first discriminator is `NAMCO PRESENTS` within 1,200 frames with nonzero executed guest instructions in
+the executor ledger and all 14 address-based original calls routed through the shipping dispatcher.
 
 ## Product and enhancement boundaries
 

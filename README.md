@@ -36,7 +36,7 @@ one `*.chd` in the repository root:
 
 After the disc source has been configured, `./run.sh` with no arguments is the stable default. It
 uses the frozen uv environment, resolves the recorded psxport framework, provisions and verifies
-`SLUS_004.02`, loads it as runtime data, builds `tekken3_port`, and launches that native/Lightrec
+`SLUS_004.02`, loads it as runtime data, builds `tekken3_port`, and launches that native/interpreter
 product. It never substitutes the framework smoke target, a test,
 or a boundary probe. `./run.sh --prepare-only` exercises the same provisioning and player build
 without launching a game process. Ghidra and other maintainer RE tools are not player prerequisites.
@@ -53,7 +53,7 @@ CC=clang CXX=clang++ uv run --frozen python external/psxport/tools/port/consumer
 lists every owner and `docs/features.md` where each joins a psxport feature.
 
 `tekken3_port` is the only player product. The asset-free gate proves that it links to the shared
-Lightrec executor and title-native owners, but it contains no game bytes and therefore claims no
+interpreter and title-native owners, but it contains no game bytes and therefore claims no
 verified frame or gameplay yet.
 See `titles/tekken3/README.md` for the measured target, `docs/re-frontier.md` for what has and has not
 been reverse-engineered, and `docs/issues/` for the open blockers.
@@ -73,7 +73,7 @@ The output is `scratch/bin/tekken3/SLUS_004.02`. Disc images and extracted execu
 committed, and the provisioner checks the tracked identity and PS-X EXE header fields against the
 real bytes on every run. `titles/tekken3/README.md` records the startup model.
 
-The current product discriminator is bounded guest work through Lightrec compared with the
+The current product discriminator is bounded guest work on psxport's interpreter compared with the
 independent Mednafen oracle; the retired interpreter probe is not a current gate.
 
 Built with AI assistance (Claude and other LLMs).
