@@ -1,7 +1,8 @@
 # Tekken 3 project state
 
 Epic intent lives in `docs/project-goals.md`, ownership and placement in `docs/codemap.md`, atomic
-work in `docs/issues/`, and what has and has not been reverse-engineered in `docs/re-frontier.md`.
+work in `docs/issues/`. RE knowledge lives in the decomp `external/tekken3-decomp` (ours, MIT): the symbol map
+`config/symbols/slus_004.02.txt`, `docs/re-frontier.md` and behaviour notes there.
 
 | ID | Capability | State | Evidence or gap |
 |---|---|---|---|

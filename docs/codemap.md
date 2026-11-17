@@ -1,7 +1,7 @@
 # Codemap
 
 Where code lives in the Tekken 3 port. Capability state is in `docs/project-state.md`, feature hops in
-`docs/features.md`, the evidence chain in `docs/re-frontier.md`, atomic work in `docs/issues/`. The framework
+`docs/features.md`, the evidence chain in `external/tekken3-decomp/docs/re-frontier.md`, atomic work in `docs/issues/`. The framework
 side is `external/psxport/docs/codemap.md`.
 
 Product path: `run.sh` → `tools/run.py` (provision, build) → the framework main (`psxport_add_product`, target
@@ -20,11 +20,12 @@ Frame loop: owned. `FrameDriver` runs the main loop body (`FiniteFrame::step`, r
   is the same for every Core (stock VSync and pad bindings, the widescreen policy).
 - Guest calls from the frame go through `frame::Machine`, so the frame sequence is tested on a recorder and
   shipped on `CoreMachine`. A guest call that must return goes through `execution::FiniteGuestCall`.
-- A measured address lives at a name in its owner's header with its provenance.
+- A measured address enters the decomp's symbol map (`external/tekken3-decomp/config/symbols/`) first, then its
+  owner's header under the same name until the constants are generated (`docs/plans/`).
 - psxport (`external/psxport`, a link to the live checkout) owns the executor, override keys, the stock
   VSync/pad classes and presentation. This repository supplies addresses and title behaviour.
-- `external/tekken3-xport` (submodule, MIT) is the non-matching decomp of `SLUS_004.02` and its BNS overlays
-  (`docs/prior-art.md`).
+- `external/tekken3-decomp` (submodule, ours, MIT) is the decomp of `SLUS_004.02`: splat config, symbol map, RE
+  notes. `external/tekken3-xport` (submodule, MIT) is the community non-matching C, a reading aid.
 
 ## Owners
 

@@ -1,3 +1,6 @@
 [submodule "external/tekken3-xport"]
 	path = external/tekken3-xport
 	url = https://github.com/psxports/Tekken3-xport.git
+[submodule "external/tekken3-decomp"]
+	path = external/tekken3-decomp
+	url = https://github.com/SomeoneIsWorking/tekken3-decomp.git
