@@ -6,6 +6,7 @@
 #include "execution_services.h"
 #include "game.h"
 #include "native_dispatch.h"
+#include "runtime/session.h"
 
 #include <lucent/log.h>
 
@@ -195,6 +196,7 @@ void FrameDriver::stepFrame(Core &core, std::uint32_t frame) {
     std::abort();
   }
   if (!stepState_.callPending) {
+    session(core).marginPicture.bodyComplete();
     game_.timing.logicFrame = frame;
     core.rsub.otAttr.beginLogicFrame(frame);
     if (stepState_.stage == Stage::Running) {

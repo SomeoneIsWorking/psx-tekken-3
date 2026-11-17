@@ -42,6 +42,7 @@ Frame loop: owned. `FrameDriver` runs the main loop body (`FiniteFrame::step`, r
 | `cd::installOverrides` | `game/cd/sector_ready_order.*` | Instant reads in the order the guest's libcd assumes: class-2 completion before the first sector, ISR before the INT flush |
 | `render::installOverrides` | `game/render/gpu_queue_timeout.*` | The libgpu queue timeout (`0x8007E8F0`, `0x8007E924`) on the guest field word |
 | `widescreen::WidescreenProjection` | `game/widescreen/widescreen.*` | `FUN_80080A40` gets the widened view; the stage and effect clippers cull at the canvas |
+| `widescreen::MarginPicture` | `game/widescreen/margin_picture.h` | Whether the frame being sealed holds picture in the margins: only a mode body that ran the stage clipper does; 2D screens pillarbox |
 | `widescreen::StageTileWedge` | `game/widescreen/stage_tile_wedge.*` | `FUN_8006D95C`'s 6x6 stage-tile selection for a wedge widened in the tangent domain |
 | `field::kEntry`, `kCounter`, `readCounter` | `game/fieldclock/field_clock.*` | libetc VSync and the field count a negative mode returns |
 | tools | `bootstrap.py`, `tools/` | The `external/psxport` fetch (`bootstrap.py`), launcher, provisioning, RE probes |
@@ -62,7 +63,7 @@ Frame loop: owned. `FrameDriver` runs the main loop body (`FiniteFrame::step`, r
 |---|---|
 | host pad | psxport `Pad::serviceFrame` (from `Machine::servicePad` in the barrier), then `Runtime::deliverPad` |
 | libcd | the guest's own; reads are instant; `sector_ready_order` keeps its completion order |
-| widescreen | `Runtime::guestWidescreenProjection` → `WidescreenProjection` latches into `Session::projectionPlan`; clippers and the stage wedge read that plan; 4:3 runs the retail bodies |
+| widescreen | `Runtime::guestWidescreenProjection` → `WidescreenProjection` latches into `Session::projectionPlan`; clippers and the stage wedge read that plan; 4:3 runs the retail bodies; `pictureBeyondBuffer` answers from `Session::marginPicture`, latched by `FrameDriver::stepFrame` |
 | warp | `DebugMenu` (`game/debug/debug_menu.*`, psxport `TitleDebugMenu`) → `FrameDriver::armWarp` → `FightWarp::apply` at a field boundary |
 
 ## Where does it go?

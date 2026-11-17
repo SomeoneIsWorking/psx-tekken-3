@@ -28,6 +28,7 @@ public:
   void clipEffectPrimitive(Core &core, const psx::present::GuestProjectionPlan &plan) const;
 
   [[nodiscard]] const StageTileWedge &stageWedge() const;
+  psx::present::PictureBeyondBuffer pictureBeyondBuffer(Core &core) const override;
 
   static psx::present::GuestProjectionGeometry measuredGeometry(std::uint32_t viewWidth, std::uint32_t viewHeight);
 

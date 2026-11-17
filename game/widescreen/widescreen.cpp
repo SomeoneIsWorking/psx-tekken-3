@@ -141,6 +141,10 @@ const StageTileWedge &WidescreenProjection::stageWedge() const {
   return stageWedge_;
 }
 
+psx::present::PictureBeyondBuffer WidescreenProjection::pictureBeyondBuffer(Core &core) const {
+  return session(core).marginPicture.sealed();
+}
+
 void WidescreenProjection::publishDimensions(Core &core, psx::present::GuestProjectionPlan &plan) const {
   const psx::present::GuestProjectionGeometry native = measuredGeometry(core.r[4], core.r[5]);
   plan = latch_(core, native);
@@ -292,6 +296,7 @@ void WidescreenProjection::publishDimensionsOverride(Core *core) {
 }
 
 void WidescreenProjection::stageClipOverride(Core *core) {
+  session(*core).marginPicture.stageDrawn();
   policyFrom(core, "stage clip").clipStagePrimitives(*core, session(*core).projectionPlan);
 }
 

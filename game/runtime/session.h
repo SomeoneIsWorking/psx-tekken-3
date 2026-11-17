@@ -2,6 +2,7 @@
 
 #include "game_runtime.h"
 #include "guest_widescreen_projection.h"
+#include "widescreen/margin_picture.h"
 
 class Core;
 
@@ -14,6 +15,7 @@ public:
 
   // The plan the guest's last view-dimension call latched; the clippers and the tile wedge read it.
   psx::present::GuestProjectionPlan projectionPlan;
+  widescreen::MarginPicture marginPicture;
 };
 
 // The session of the Game `core` belongs to; aborts when it has none.
