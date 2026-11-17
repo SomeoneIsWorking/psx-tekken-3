@@ -188,6 +188,15 @@ declared host-architecture performance.
   at `+0x50` of the `0xAC`-byte records from `0x800B8D58`) to `0x800ADD5C/5E` and the costumes to
   `0x800ADD98/9A`. VS picks the stage from a character's table (`FUN_8004F3B0`). No prior art names any of
   these (`docs/prior-art.md`).
+- evidence (2026-11-17): every mode change goes through `0x8004F8F8(next)`, which stores `next` at `0x80097F38` and
+  enters mode 2; mode 2 (`FUN_8004FA60`) shows the NAMCO card (phases 5-10, 33-field fade, hold until
+  `0x800AE218 - 0x800AE214 >= 91` and both overlay loads done, 32-field fade) before modes 3 and 6, and loads
+  without a picture (phases 1-4) before the rest. Start routes to the menu (`0x8004F8F8(4)`): mode 2 phases 6-10
+  once `0x80097F3D` is set, mode 3 and mode 6 after every body (`0x80050F38`, edge bit `0x800` of
+  `0x800ADF08|0x800ADF0A`), and the movie step `0x800E1374` after each decoded frame (`0x800ADD68|0x800ADD6A`).
+  `0x80029DC0(0)` parses both pads into those words. Mode 8 phase 3 is `FUN_8002A40C`, the fighters' load, behind
+  the VS screen; phase 4 waits 60 fields from phase 2. The effect clipper `FUN_8006E44C` writes only the tag and
+  the four vertex words of its 9-word packet; the stage clipper `FUN_8006CC28` also copies word 1.
 - where: `game/frame/fight_warp.*`
 - gap: Arcade mode, stage choice independent of the characters, and the Force/Ball/Theatre modes are unread.
 
