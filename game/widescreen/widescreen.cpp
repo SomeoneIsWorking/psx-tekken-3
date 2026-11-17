@@ -279,11 +279,12 @@ void WidescreenProjection::clipEffectPrimitive(Core &core, const psx::present::G
   }
 
   const std::uint32_t orderingTable = orderingTables + static_cast<std::uint32_t>(orderingTableIndex) * 4u;
-  linkPacket(core, packet, orderingTable, 9);
-  writePacketWord(core, packet, 1, core.mem_r32(command));
+  // Word 1 (colour and code) is the caller's; the command word's high bits are the OT index.
   for (std::uint32_t index = 0; index < 4; ++index) {
     writePacketWord(core, packet, index * 2u + 2u, vertices[index]);
   }
+  linkPacket(core, packet, orderingTable, 9);
+  core.r[2] = 0x00FFFFFFu;
 }
 
 void WidescreenProjection::publishDimensionsOverride(Core *core) {

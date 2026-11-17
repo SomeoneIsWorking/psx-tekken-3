@@ -1,12 +1,12 @@
 ---
 id: 25
 title: At 16:9 the second attract fight draws garbage textures where 4:3 shows a clean fight
-status: open
+status: resolved
 symptom: after the first attract fight (field 12,000, clean at 16:9) the next scene at about field 12,500 and 13,000 is noise textures on the stage and both characters; 4:3 at the same fields is clean
 state_items: S005,S007
 tags: tekken3,widescreen,record-path,textures
 created: 2026-10-10
-updated: 2026-10-29
+updated: 2026-11-17
 ---
 
 ## Observed
@@ -38,3 +38,23 @@ fight reached through `warp` (Yoshimitsu vs Xiaoyu, Lei vs Jin) is clean at 16:9
 
 Next: dump the record VRAM image and the device VRAM at the first resync after field 6,600 at 16:9 and find the first
 write that differs; the record path's canvas (psxport `RecordRasterizer`) should never reach the VRAM image.
+
+## Cause
+
+`game/widescreen/widescreen.cpp:WidescreenProjection::clipEffectPrimitive`, the 16:9 port of the effect clipper
+`FUN_8006E44C`, wrote the command record's first word into packet word 1. Retail writes only the tag and the four
+vertex words (`0x8006E4F4`..`0x8006E508`); word 1 is the caller's colour and code. The command word's bits 21..30
+are the OT index, so the copied word replaced the GP0 code byte and the device ran it as some other command, writing
+VRAM. Effects are drawn on hits, so an idle warped fight never reached it and the attract demo did. Not reached at
+4:3, where the retail body runs.
+
+## Fix
+
+The override writes the vertex words and the tag as retail does, and returns retail's `v0` (`0x00FFFFFF`) on the
+emit path.
+
+## Shown
+
+Boot walk at 16:9 (`ires=0`, sink 3840x2160, unpaced), shots every few hundred fields to 7,700
+(`scratch/t3pass/boot2_sheet.png`, before `boot_sheet.png`): the Eddy vs Paul attract demo at 7,200 shows a clean hit
+spark where the old build drew striped textures over the whole picture, and 7,600 is clean.
