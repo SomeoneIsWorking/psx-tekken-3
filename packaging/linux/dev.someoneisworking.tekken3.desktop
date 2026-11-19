@@ -1,6 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Tekken 3 Revamped
+X-OpenSU-BoxArt=psx/Tekken 3 (USA)
 GenericName=Fighting game
 Comment=PC-native port of Tekken 3
 Icon=dev.someoneisworking.tekken3
